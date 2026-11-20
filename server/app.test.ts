@@ -1,0 +1,315 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { handleRequest } from './app';
+import type { Env } from './env';
+import { signSessionToken } from './db';
+
+test('order and customer-data endpoints are disabled', async () => {
+  const initialState = {
+    users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
+    orders: [
+      {
+        id: 'ord-1',
+        orderNumber: 'ERA-1042',
+        orderStatus: 'pending',
+        paymentStatus: 'awaiting_verification',
+        trackingNumber: '',
+        courierName: '',
+        adminNotes: '',
+      },
+    ],
+  };
+  let storedData = JSON.stringify(initialState);
+  let storedVersion = 1;
+
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => ({ data: storedData, version: storedVersion }) as T,
+        run: async () => {
+          if (query.startsWith('UPDATE app_state')) {
+            if (values[1] !== storedVersion) return { meta: { changes: 0 } };
+            storedData = String(values[0]);
+            storedVersion += 1;
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        },
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    SESSION_SECRET: 'order-update-test-secret',
+  } as unknown as Env;
+  const token = await signSessionToken(env, {
+    userId: 'admin-1',
+    role: 'admin',
+    email: 'admin@example.com',
+  });
+
+  const response = await handleRequest(
+    new Request('https://store.example/api/admin/orders/ord-1', {
+      method: 'PATCH',
+      headers: {
+        origin: 'https://store.example',
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ orderStatus: 'shipped', trackingNumber: 'WAYBILL-1' }),
+    }),
+    env
+  );
+  assert.equal(response.status, 410);
+  assert.deepEqual((JSON.parse(storedData) as { orders: unknown[] }).orders, []);
+
+  const sandboxResponse = await handleRequest(
+    new Request('https://store.example/api/payments/razorpay/sandbox-complete', {
+      method: 'POST',
+      headers: {
+        origin: 'https://store.example',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ orderId: 'ord-1', outcome: 'success' }),
+    }),
+    env
+  );
+  assert.equal(sandboxResponse.status, 410);
+
+  const enquiryResponse = await handleRequest(
+    new Request('https://store.example/api/enquiries', {
+      method: 'POST',
+      headers: {
+        origin: 'https://store.example',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'Test customer', email: 'test@example.com' }),
+    }),
+    env
+  );
+  assert.equal(enquiryResponse.status, 410);
+
+  const disabledDataRoutes = [
+    ['POST', '/api/analytics/abandoned-cart'],
+    ['POST', '/api/products/prod-1/reviews'],
+    ['GET', '/api/orders/track'],
+    ['GET', '/api/admin/customers'],
+    ['GET', '/api/admin/overview'],
+    ['GET', '/api/admin/backup'],
+  ] as const;
+  for (const [method, path] of disabledDataRoutes) {
+    const disabledResponse = await handleRequest(
+      new Request(`https://store.example${path}`, {
+        method,
+        headers: method === 'POST'
+          ? { origin: 'https://store.example', 'content-type': 'application/json' }
+          : undefined,
+        body: method === 'POST' ? '{}' : undefined,
+      }),
+      env
+    );
+    assert.equal(disabledResponse.status, 410, `${method} ${path} should be disabled`);
+  }
+});
+
+test('disabled cancellation endpoint does not mutate historical order or stock data', async () => {
+  const initialState = {
+    users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
+    orders: [
+      {
+        id: 'ord-1',
+        orderNumber: 'ERA-1042',
+        orderStatus: 'pending',
+        paymentStatus: 'awaiting_verification',
+        items: [{ productId: 'prod-1', variantId: 'var-1', quantity: 1 }],
+      },
+    ],
+    products: [{ id: 'prod-1', variants: [{ id: 'var-1', stock: 10 }] }],
+  };
+  let storedData = JSON.stringify(initialState);
+  let storedVersion = 1;
+  let stateReads = 0;
+  let saveReadsWaiting = 0;
+  let releaseSaveReadBarrier: () => void = () => {};
+  const saveReadBarrier = new Promise<void>((resolve) => {
+    releaseSaveReadBarrier = () => resolve();
+  });
+
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => {
+          if (query.startsWith('SELECT data, version FROM app_state')) {
+            stateReads += 1;
+            if (stateReads >= 3 && stateReads <= 4) {
+              const snapshot = { data: storedData, version: storedVersion };
+              saveReadsWaiting += 1;
+              if (saveReadsWaiting === 2) releaseSaveReadBarrier();
+              await saveReadBarrier;
+              return snapshot as T;
+            }
+            return { data: storedData, version: storedVersion } as T;
+          }
+          return null as T;
+        },
+        run: async () => {
+          if (query.startsWith('UPDATE app_state')) {
+            if (values[1] !== storedVersion) return { meta: { changes: 0 } };
+            storedData = String(values[0]);
+            storedVersion += 1;
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        },
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    SESSION_SECRET: 'order-cancellation-test-secret',
+  } as unknown as Env;
+  const token = await signSessionToken(env, {
+    userId: 'admin-1',
+    role: 'admin',
+    email: 'admin@example.com',
+  });
+  const cancelRequest = () =>
+    handleRequest(
+      new Request('https://store.example/api/orders/ERA-1042/cancel', {
+        method: 'POST',
+        headers: {
+          origin: 'https://store.example',
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Customer request' }),
+      }),
+      env
+    );
+
+  const responses = await Promise.all([cancelRequest(), cancelRequest()]);
+  const state = JSON.parse(storedData) as typeof initialState;
+
+  assert.deepEqual(
+    responses.map((response) => response.status),
+    [410, 410]
+  );
+  assert.deepEqual(state.orders, []);
+});
+
+test('public product feed and sitemap expose canonical, active catalogue data only', async () => {
+  const product = {
+    id: 'internal-product-id',
+    slug: 'saffron-noir',
+    name: 'Saffron Noir',
+    subtitle: 'Saffron and sandalwood',
+    categoryName: 'Fragrance',
+    description: 'A warm eau de parfum.',
+    images: ['/uploads/saffron-noir.jpg'],
+    variants: [{ label: '50 ml', size: '50 ml', price: 2500, stock: 5 }],
+    isShowcaseDemo: true,
+    isArchived: false,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-03-10T00:00:00.000Z',
+  };
+  const storedData = JSON.stringify({
+    products: [product, { ...product, slug: 'archived-item', isArchived: true }],
+    reviews: [{ id: 'legacy-review', productId: product.id, authorName: 'Historical Customer' }],
+  });
+  const fakeDb = {
+    batch: async () => [],
+    prepare() {
+      return {
+        bind() {
+          return this;
+        },
+        first: async <T,>() => ({ data: storedData, version: 1 }) as T,
+        run: async () => ({ meta: { changes: 0 } }),
+      };
+    },
+  };
+  const env = { DB: fakeDb } as unknown as Env;
+
+  const feedResponse = await handleRequest(
+    new Request('https://store.example/products.json'),
+    env
+  );
+  const feed = (await feedResponse.json()) as {
+    products: Array<{
+      slug: string;
+      url: string;
+      listingType: string;
+      variants: Array<{ currency: string; availability: string }>;
+    }>;
+  };
+
+  assert.equal(feedResponse.status, 200);
+  assert.equal(feed.products.length, 0);
+
+
+});
+
+test('admin image upload stores a validated image and returns its public URL', async () => {
+  const initialState = {
+    users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
+  };
+  let storedMedia: unknown[] | null = null;
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => ({ data: JSON.stringify(initialState), version: 1 }) as T,
+        run: async () => {
+          if (query.startsWith('INSERT INTO media')) storedMedia = values;
+          return { meta: { changes: 1 } };
+        },
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    SESSION_SECRET: 'image-upload-test-secret',
+  } as unknown as Env;
+  const token = await signSessionToken(env, {
+    userId: 'admin-1',
+    role: 'admin',
+    email: 'admin@example.com',
+  });
+  const dataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/r3sAAAAASUVORK5CYII=';
+
+  const response = await handleRequest(
+    new Request('https://store.example/api/admin/upload', {
+      method: 'POST',
+      headers: {
+        origin: 'https://store.example',
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ dataUrl }),
+    }),
+    env
+  );
+  const result = (await response.json()) as { url?: string; error?: string };
+
+  assert.equal(response.status, 201);
+  assert.match(result.url || '', /^\/uploads\/eramora-\d+-[a-f0-9]+\.png$/);
+  assert.ok(storedMedia);
+});

@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local `wrangler dev` overrides. These demo values are
+# development-only and must never be used in a deployed environment.
+
+ENVIRONMENT="development"
+# SESSION_SECRET="change-me-to-a-long-random-string"
+ADMIN_DEMO_PASSWORD="EramoraLocalOnly@2026"
+# APP_URL="https://your-domain.example"
+

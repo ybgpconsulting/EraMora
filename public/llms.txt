@@ -1,0 +1,31 @@
+# ERAMORA
+
+> ERAMORA is an India-based fragrance and home-ritual brand. Its catalogue includes scented candles, fine fragrance, home diffusers, and curated gifting.
+
+Use the live product catalogue and product pages as the source of truth. Prices and availability can change; confirm current details with the ERAMORA WhatsApp concierge.
+
+## Product discovery
+
+- [Live product catalogue (JSON)](https://eramora.in/products.json): current product listings, descriptions, images, variants, INR prices, and a marker for showcase listings.
+- [Shop all creations](https://eramora.in/shop)
+- [Collections](https://eramora.in/collections)
+- [Gifting atelier](https://eramora.in/gifting)
+
+## About ERAMORA
+
+- [About the brand](https://eramora.in/about)
+- [Contact and custom gifting](https://eramora.in/contact)
+- [Frequently asked questions](https://eramora.in/faq)
+
+## Policies
+
+- [Shipping policy](https://eramora.in/shipping-policy)
+- [Returns policy](https://eramora.in/returns-policy)
+- [Privacy policy](https://eramora.in/privacy-policy)
+- [Terms and conditions](https://eramora.in/terms)
+
+## Machine-readable discovery
+
+- [XML sitemap](https://eramora.in/sitemap.xml)
+- [Robots policy](https://eramora.in/robots.txt)
+- [WhatsApp concierge](https://wa.me/918368143892)
