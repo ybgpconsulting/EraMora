@@ -82,6 +82,9 @@ export const Navbar: React.FC = () => {
   };
 
   const isActive = (href: string) => {
+    if (href.includes('?')) {
+      return path === href;
+    }
     if (href === '/shop') return basePath === '/shop' || basePath.startsWith('/product');
     return basePath === href;
   };

@@ -6,12 +6,15 @@ import { ImageWithFallback } from '../components/ImageWithFallback';
 import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
 
-type ShowcaseTab = 'featured' | 'bestsellers' | 'new' | 'candles' | 'fragrance';
+type ShowcaseTab = 'featured' | 'fragrance' | 'candles' | 'sculptural' | 'diy' | 'gifting';
 
 const TABS: Array<[ShowcaseTab, string]> = [
   ['featured', 'Featured'],
-  ['candles', 'Scented Candles'],
   ['fragrance', 'Curated Fragrances'],
+  ['candles', 'Scented Candles'],
+  ['sculptural', 'Sculptural Candles'],
+  ['diy', 'DIY Colouring Kits'],
+  ['gifting', 'Gifting'],
 ];
 
 const HERO_IMAGE = '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg';
@@ -21,10 +24,11 @@ export const CollectionsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ShowcaseTab>('featured');
 
   const displayedProducts = useMemo(() => {
-    if (activeTab === 'bestsellers') return products.filter((p) => p.isBestseller).slice(0, 6);
-    if (activeTab === 'new') return products.filter((p) => p.isNewArrival).slice(0, 6);
     if (activeTab === 'candles') return products.filter((p) => p.categoryId === 'cat-scented-candles').slice(0, 6);
     if (activeTab === 'fragrance') return products.filter((p) => p.categoryId === 'cat-curated-fragrances').slice(0, 6);
+    if (activeTab === 'sculptural') return products.filter((p) => p.categoryId === 'cat-sculptural-candles').slice(0, 6);
+    if (activeTab === 'diy') return products.filter((p) => p.categoryId === 'cat-diy-colouring-kits').slice(0, 6);
+    if (activeTab === 'gifting') return products.filter((p) => p.categoryId === 'cat-gifting').slice(0, 6);
     return products.filter((p) => p.isFeatured).slice(0, 6);
   }, [activeTab, products]);
 

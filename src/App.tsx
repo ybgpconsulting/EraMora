@@ -6,6 +6,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+import { YbgpAttributionBanner } from './components/YbgpBrandingCta';
 import { OfflineIndicator, PWAInstallPrompt } from './components/PWAComponents';
 import { HomePage } from './pages/HomePage';
 import { CollectionsPage } from './pages/CollectionsPage';
@@ -73,6 +74,7 @@ const AppRouter: React.FC = () => {
       <Footer />
       <CartDrawer />
       <FloatingWhatsApp />
+      <YbgpAttributionBanner />
       <MobileBottomNav />
       <OfflineIndicator />
       {!path.startsWith('/admin') && <PWAInstallPrompt />}

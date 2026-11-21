@@ -58,7 +58,7 @@ export const Footer: React.FC = () => {
         isProductRoute
           ? 'pb-[calc(env(safe-area-inset-bottom)+240px)]'
           : 'pb-[calc(env(safe-area-inset-bottom)+180px)]'
-      } md:pb-0`}
+      } md:pb-28`}
     >
       <div className="mx-auto max-w-7xl px-5 pt-9 md:px-8 md:pt-11 lg:px-10">
         <div className="grid grid-cols-2 gap-3 border-b border-[#FAF7F2]/10 pb-6 md:grid-cols-4 md:gap-4 md:pb-8">
