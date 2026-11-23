@@ -1,5 +1,5 @@
 import React from 'react';
-import { Instagram } from 'lucide-react';
+import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { buildGeneralWhatsAppUrl } from '../utils/commerce';
 import { BrandLogo } from './BrandLogo';
@@ -23,6 +23,9 @@ const careLinks = [
 
 const linkClassName =
   'inline-flex min-h-8 items-center text-[12px] text-[#FAF7F2]/65 transition-colors hover:text-[#FAF7F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]';
+
+const contactLinkClassName =
+  'group flex min-h-14 items-center gap-3 rounded-xl border border-transparent px-2.5 text-[#FAF7F2]/72 transition-colors hover:border-[#C5A059]/25 hover:bg-[#FAF7F2]/[0.04] hover:text-[#FAF7F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]';
 
 export const Footer: React.FC = () => {
   const { path, navigate, settings } = useStore();
@@ -109,19 +112,57 @@ export const Footer: React.FC = () => {
             <div className="flex flex-col">{renderLinks(careLinks)}</div>
           </nav>
 
-          <div className="col-span-2 space-y-2 rounded-2xl border border-[#FAF7F2]/10 bg-[#FAF7F2]/[0.035] p-4 md:col-span-1 md:p-5">
-            <h2 className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#C5A059]">
-              Contact
-            </h2>
-            <a href={`mailto:${settings.supportEmail}`} className={linkClassName}>
-              {settings.supportEmail}
+          <div className="col-span-2 rounded-2xl border border-[#FAF7F2]/10 bg-[#FAF7F2]/[0.035] p-4 md:col-span-1 md:p-5">
+            <div className="mb-2">
+              <h2 className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#C5A059]">
+                Contact
+              </h2>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-[#FAF7F2]/45">
+                Fragrance guidance and order support
+              </p>
+            </div>
+
+            <a href={`mailto:${settings.supportEmail}`} className={contactLinkClassName}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <Mail aria-hidden="true" className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[9px] uppercase tracking-[0.16em] text-[#FAF7F2]/40">
+                  Email
+                </span>
+                <span className="mt-0.5 block break-all text-[12px] font-medium">
+                  {settings.supportEmail}
+                </span>
+              </span>
             </a>
-            <a href={phoneUrl} className={linkClassName}>
-              {settings.supportPhone}
+
+            <a href={phoneUrl} className={contactLinkClassName}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <Phone aria-hidden="true" className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+              <span>
+                <span className="block text-[9px] uppercase tracking-[0.16em] text-[#FAF7F2]/40">
+                  Call
+                </span>
+                <span className="mt-0.5 block text-[12px] font-medium">
+                  {settings.supportPhone}
+                </span>
+              </span>
             </a>
-            <p className="text-[12px] leading-relaxed text-[#FAF7F2]/55">
-              {settings.studioAddress}
-            </p>
+
+            <div className="flex min-h-14 items-start gap-3 px-2.5 pt-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <MapPin aria-hidden="true" className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[9px] uppercase tracking-[0.16em] text-[#FAF7F2]/40">
+                  Studio
+                </span>
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-[#FAF7F2]/72">
+                  {settings.studioAddress}
+                </span>
+              </span>
+            </div>
           </div>
         </div>
 
