@@ -163,31 +163,39 @@ export class Router {
   }
 }
 
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+let rateLimitCleanupCount = 0;
 
-/** Per-isolate sliding window limiter. Good enough for abusive request bursts. */
+/** D1-backed fixed-window limiter shared across Worker isolates. */
 export function rateLimit(maxRequests: number, windowMs: number): Middleware {
-  return (req, res) => {
-    const key = `${req.ip}:${req.url.pathname}`;
+  return async (req, res) => {
     const now = Date.now();
-    const entry = rateBuckets.get(key);
+    const fingerprint = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(`${req.ip}:${req.req.method}:${req.url.pathname}`)
+    );
+    const key = Array.from(new Uint8Array(fingerprint), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    const entry = await req.env.DB.prepare(
+      `INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?)
+       ON CONFLICT(key) DO UPDATE SET
+         count = CASE WHEN rate_limits.reset_at <= ? THEN 1 ELSE rate_limits.count + 1 END,
+         reset_at = CASE WHEN rate_limits.reset_at <= ? THEN excluded.reset_at ELSE rate_limits.reset_at END
+       RETURNING count, reset_at`
+    )
+      .bind(key, now + windowMs, now, now)
+      .first<{ count: number; reset_at: number }>();
+    if (!entry) throw new Error('Rate limit could not be recorded.');
 
-    if (!entry || now > entry.resetAt) {
-      rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
-      if (rateBuckets.size > 5000) {
-        for (const [bucketKey, bucket] of rateBuckets) {
-          if (bucket.resetAt < now) rateBuckets.delete(bucketKey);
-        }
-      }
-      return true;
+    rateLimitCleanupCount += 1;
+    if (rateLimitCleanupCount >= 100) {
+      rateLimitCleanupCount = 0;
+      await req.env.DB.prepare('DELETE FROM rate_limits WHERE reset_at <= ?').bind(now).run();
     }
 
-    if (entry.count >= maxRequests) {
+    if (entry.count > maxRequests) {
       res.status(429).json({ error: 'Too many requests. Please wait a moment and try again.' });
       return false;
     }
 
-    entry.count += 1;
     return true;
   };
 }

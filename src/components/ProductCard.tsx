@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Plus } from 'lucide-react';
+import { ArrowUpRight, Heart, Plus } from 'lucide-react';
 import type { Product } from '../types/store';
 import { useStore } from '../context/StoreContext';
 import { ImageWithFallback } from './ImageWithFallback';
@@ -13,12 +13,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { navigate, addToCart, wishlist, toggleWishlist } = useStore();
   const primaryVariant = product.variants[0];
   const isSaved = wishlist.includes(product.id);
-  const inStock = product.variants.some((v) => v.stock > 0);
+  const inStock = !product.isShowcaseDemo && product.variants.some((v) => v.stock > 0);
   const badgeText = product.badges[0] || (product.isShowcaseDemo ? 'Showcase' : '');
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!primaryVariant || primaryVariant.stock <= 0) {
+    if (product.isShowcaseDemo || !primaryVariant || primaryVariant.stock <= 0) {
       navigate(`/product/${product.slug}`);
       return;
     }
@@ -78,11 +78,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <button
           type="button"
           onClick={handleQuickAdd}
-          aria-label={inStock ? `Quick add ${product.name} to bag` : `View ${product.name} availability`}
+          aria-label={
+            product.isShowcaseDemo
+              ? `View ${product.name} demo concept`
+              : inStock
+                ? `Quick add ${product.name} to bag`
+                : `View ${product.name} availability`
+          }
           className="absolute inset-x-3 bottom-3 flex translate-y-0 items-center justify-center gap-2 bg-[#2C1E16]/95 py-2.5 text-[9px] uppercase tracking-[0.22em] text-[#FAF7F2] opacity-100 transition-all duration-500 hover:bg-[#2C1E16] md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 cursor-pointer"
         >
-          <Plus className="h-3 w-3" strokeWidth={1.8} />
-          <span>{inStock ? 'Add to bag' : 'Notify me'}</span>
+          {product.isShowcaseDemo ? (
+            <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+          ) : (
+            <Plus aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+          )}
+          <span>{product.isShowcaseDemo ? 'View concept' : inStock ? 'Add to bag' : 'View availability'}</span>
         </button>
       </div>
 
@@ -103,15 +113,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <p className="mt-1 line-clamp-1 text-[11px] leading-relaxed text-[#6B584C]">{product.subtitle}</p>
 
         <div className="mt-3 flex items-baseline justify-between gap-2 border-t border-[#2C1E16]/8 pt-2.5">
-          <div className="flex items-baseline gap-2 tabular-nums">
-            <span className="text-[13px] font-medium text-[#2C1E16]">{formatINR(primaryVariant?.price || 0)}</span>
-            {primaryVariant?.compareAtPrice && primaryVariant.compareAtPrice > primaryVariant.price && (
-              <span className="text-[11px] text-[#6B584C] line-through">{formatINR(primaryVariant.compareAtPrice)}</span>
-            )}
-          </div>
-          <span className="text-[10px] uppercase tracking-[0.12em] text-[#6B584C]">
-            {inStock ? primaryVariant?.size : 'Restocking'}
-          </span>
+          {product.isShowcaseDemo ? (
+            <span className="text-[10px] uppercase tracking-[0.12em] text-[#6B584C]">
+              Demo concept · Not for sale
+            </span>
+          ) : (
+            <>
+              <div className="flex items-baseline gap-2 tabular-nums">
+                <span className="text-[13px] font-medium text-[#2C1E16]">
+                  {primaryVariant ? formatINR(primaryVariant.price) : 'Price on request'}
+                </span>
+                {primaryVariant?.compareAtPrice && primaryVariant.compareAtPrice > primaryVariant.price && (
+                  <span className="text-[11px] text-[#6B584C] line-through">{formatINR(primaryVariant.compareAtPrice)}</span>
+                )}
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.12em] text-[#6B584C]">
+                {inStock ? primaryVariant?.size : 'Availability on request'}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </article>

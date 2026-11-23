@@ -7,7 +7,6 @@ import {
   signSessionToken,
   verifySessionToken,
   SESSION_COOKIE,
-  type SessionPayload,
 } from './db';
 import type { Env } from './env';
 import {
@@ -23,85 +22,18 @@ import {
 } from './http';
 import { DEFAULT_ADMIN_HASH, hashPassword, verifyPassword } from './seed';
 import {
-  createGatewayOrder,
-  getRazorpayPublicKeyId,
-  isRazorpayLiveConfigured,
-  verifyRazorpayPaymentSignature,
-  verifyRazorpayWebhookSignature,
-} from './razorpay';
-import {
-  calculatePricingBreakdown,
-  validateIndianMobile,
-} from '../src/utils/commerce';
-import {
   absolutePublicUrl,
   CANONICAL_SITE_URL,
   canonicalUrl,
   createProductStructuredData,
 } from '../src/utils/seo';
 import type {
-  CartItem,
   Category,
-  Coupon,
-  IndianAddress,
-  Order,
-  OrderItemSnapshot,
-  OrderStatus,
-  PaymentStatus,
   Product,
   ProductVariant,
 } from '../src/types/store';
 
-const WHATSAPP_ONLY_PRIVACY_POLICY =
-  'This website does not collect new customer accounts, order details, delivery addresses, contact enquiries, product reviews, or abandoned-cart information. Your bag and optional gift note remain in this browser until you clear them. If you choose to order or ask a question, you will be redirected to WhatsApp and any information you send there is handled by WhatsApp and ERAMORA outside this website. The site uses an administrator sign-in only to manage the product catalogue and store settings. Historical records created before these features were disabled have not been purged.';
-
 const router = new Router();
-
-function canManageOrder(req: RequestContext, order: Order): boolean {
-  if (!req.session) return false;
-  if (req.session.role === 'admin') return true;
-  if (order.customerId && order.customerId === req.session.userId) return true;
-  return order.address.email.toLowerCase() === req.session.email.toLowerCase();
-}
-
-/** Next sequential order number derived from the highest committed number. */
-function nextOrderNumber(orders: Order[], prefix = 'ERA'): string {
-  let highest = 1043;
-  const pattern = new RegExp(`^${prefix}-(\\d+)$`);
-  for (const order of orders) {
-    const match = pattern.exec(order.orderNumber);
-    if (match) highest = Math.max(highest, Number(match[1]));
-  }
-  return `${prefix}-${highest + 1}`;
-}
-
-function getOrderCustomers(orders: Order[]) {
-  const customers = new Map<
-    string,
-    { id: string; name: string; email: string; mobile: string; ordersCount: number; totalSpent: number }
-  >();
-
-  for (const order of orders) {
-    const mobile = order.address.mobile.replace(/\D/g, '');
-    const email = order.address.email.trim().toLowerCase();
-    const key = mobile || email || order.id;
-    const customer = customers.get(key) || {
-      id: key,
-      name: order.address.fullName,
-      email,
-      mobile: order.address.mobile,
-      ordersCount: 0,
-      totalSpent: 0,
-    };
-    customer.ordersCount += 1;
-    if (order.orderStatus !== 'cancelled' && order.orderStatus !== 'refunded') {
-      customer.totalSpent += order.totalAmount;
-    }
-    customers.set(key, customer);
-  }
-
-  return [...customers.values()].sort((a, b) => b.ordersCount - a.ordersCount);
-}
 
 function parseProductVariants(value: unknown): ProductVariant[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.length > 30) return null;
@@ -192,17 +124,11 @@ function setSessionCookie(res: HttpResponse, token: string, secure: boolean): vo
 }
 
 // ---------- PUBLIC CONFIG & SEO ----------
-router.get('/api/config/public', (req, res) => {
+router.get('/api/config/public', (_req, res) => {
   const db = getDb();
-  const settings = {
-    ...db.settings,
-    policies: { ...db.settings.policies, privacy: WHATSAPP_ONLY_PRIVACY_POLICY },
-  };
   res.json({
-    settings,
+    settings: db.settings,
     banners: db.banners,
-    razorpayConfigured: isRazorpayLiveConfigured(req.env),
-    razorpayKeyId: getRazorpayPublicKeyId(req.env),
   });
 });
 
@@ -291,141 +217,14 @@ router.get('/api/products/:slug', (req, res) => {
   res.json({ product, related, recommendations });
 });
 
-router.post(
-  '/api/products/:id/reviews',
-  rateLimit(10, 60_000),
-  async (req, res) => {
-    const productId = req.params.id;
-    const authorName = sanitizeString(req.body.authorName, 80);
-    const title = sanitizeString(req.body.title, 120);
-    const comment = sanitizeString(req.body.comment, 800);
-    const rating = Number(req.body.rating);
-
-    if (!authorName || !comment || !Number.isFinite(rating) || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'Please provide your name, a rating (1–5), and review text.' });
-    }
-
-    const db = getDb();
-    const exists = db.products.find((p) => p.id === productId);
-    if (!exists) return res.status(404).json({ error: 'Product not found.' });
-
-    const newReview = {
-      id: `rev-${randomHex(4)}`,
-      productId,
-      authorName,
-      rating: Math.round(rating),
-      title: title || 'Verified Experience',
-      comment,
-      verifiedPurchase: Boolean(req.session),
-      createdAt: new Date().toISOString(),
-    };
-
-    await saveDb((draft) => {
-      draft.reviews.unshift(newReview);
-      const prod = draft.products.find((p) => p.id === productId);
-      if (prod) {
-        const productReviews = draft.reviews.filter((r) => r.productId === productId);
-        prod.reviewCount = productReviews.length;
-        prod.ratingAverage = Number(
-          (productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length).toFixed(1)
-        );
-      }
-    });
-
-    res.status(201).json(newReview);
-  }
-);
-
-// ---------- UTILITIES: COUPONS, PINCODE, ENQUIRIES ----------
-router.post('/api/coupons/validate', (req, res) => {
-  const code = sanitizeString(req.body.code, 40).toUpperCase();
-  const subtotal = Number(req.body.subtotal || 0);
-  if (!code) return res.status(400).json({ error: 'Please enter a coupon code.' });
-
-  const db = getDb();
-  const coupon = db.coupons.find((c) => c.code.toUpperCase() === code && c.active);
-  if (!coupon) {
-    return res.status(404).json({ error: 'This coupon code is invalid or no longer active.' });
-  }
-  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) {
-    return res.status(400).json({ error: 'This coupon code has expired.' });
-  }
-  if (subtotal < coupon.minOrderAmount) {
-    return res.status(400).json({
-      error: `Minimum order value of ₹${coupon.minOrderAmount.toLocaleString('en-IN')} required for ${coupon.code}.`,
-    });
-  }
-  res.json({ coupon });
-});
-
-router.post(
-  '/api/enquiries',
-  rateLimit(10, 60_000),
-  async (req, res) => {
-    const type = ['contact', 'custom_gifting', 'back_in_stock'].includes(req.body.type)
-      ? (req.body.type as 'contact' | 'custom_gifting' | 'back_in_stock')
-      : 'contact';
-    const name = sanitizeString(req.body.name, 100);
-    const email = sanitizeString(req.body.email, 120).toLowerCase();
-    const mobile = sanitizeString(req.body.mobile, 20);
-    const subject = sanitizeString(req.body.subject, 160);
-    const message = sanitizeString(req.body.message, 1200);
-    const productId = sanitizeString(req.body.productId, 80);
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'Please provide a valid email address.' });
-    }
-    if (type !== 'back_in_stock' && (!name || !message)) {
-      return res.status(400).json({ error: 'Please complete your name and message.' });
-    }
-
-    const enquiry = {
-      id: `enq-${randomHex(4)}`,
-      type,
-      name: name || 'Store Guest',
-      email,
-      mobile,
-      subject: subject || (type === 'back_in_stock' ? 'Back in Stock Notification' : 'General Enquiry'),
-      message: message || 'Please notify me when this fragrance returns to stock.',
-      productId: productId || undefined,
-      status: 'open' as const,
-      createdAt: new Date().toISOString(),
-    };
-
-    await saveDb((db) => {
-      db.enquiries.unshift(enquiry);
-    });
-    res.status(201).json({ ok: true, enquiry });
-  }
-);
-
-router.post('/api/analytics/abandoned-cart', async (req, res) => {
-  if (req.body.consent !== true) {
-    return res.status(400).json({ error: 'Explicit consent required.' });
-  }
-  const itemsCount = Number(req.body.itemsCount || 0);
-  const subtotal = Number(req.body.subtotal || 0);
-  if (itemsCount <= 0) return res.json({ ok: true });
-
-  await saveDb((db) => {
-    db.abandonedCarts.unshift({
-      id: `ab-${randomHex(4)}`,
-      email: sanitizeString(req.body.email, 120),
-      mobile: sanitizeString(req.body.mobile, 20),
-      itemsCount,
-      subtotal,
-      consentedAt: new Date().toISOString(),
-    });
-    if (db.abandonedCarts.length > 100) db.abandonedCarts.length = 100;
-  });
-  res.json({ ok: true });
-});
-
 // ---------- ADMIN AUTHENTICATION ----------
 router.post(
   '/api/auth/login',
   rateLimit(5, 15 * 60_000),
   async (req, res) => {
+    if (!req.env.SESSION_SECRET || req.env.SESSION_SECRET.length < 32) {
+      return res.status(503).json({ error: 'Administrator session signing is not configured.' });
+    }
     if (
       req.env.ENVIRONMENT === 'production' &&
       (!req.env.ADMIN_DEMO_PASSWORD ||
@@ -480,493 +279,7 @@ router.get('/api/auth/me', (req, res) => {
   res.json({ user: safeUser });
 });
 
-// ---------- ORDERS & PAYMENTS ----------
-router.post(
-  '/api/orders',
-  rateLimit(15, 60_000),
-  async (req, res) => {
-    try {
-      const db = getDb();
-      const rawItems = Array.isArray(req.body.items)
-        ? (req.body.items as Array<{ productId: string; variantId: string; quantity: number }>)
-        : [];
-      const address = req.body.address as IndianAddress | undefined;
-      const paymentMethod = req.body.paymentMethod as 'razorpay' | 'cod';
-      const couponCode = sanitizeString(req.body.couponCode, 40).toUpperCase();
-      const giftWrapSelected = Boolean(req.body.giftWrapSelected);
-      const giftMessage = sanitizeString(req.body.giftMessage, 250);
-
-      if (rawItems.length === 0) {
-        return res.status(400).json({ error: 'Your shopping bag is empty.' });
-      }
-      if (!address) {
-        return res.status(400).json({ error: 'Delivery address is required.' });
-      }
-      if (!sanitizeString(address.fullName, 100)) {
-        return res.status(400).json({ error: 'Full name is required.' });
-      }
-      if (!validateIndianMobile(address.mobile || '')) {
-        return res.status(400).json({ error: 'Please provide a valid 10-digit Indian mobile number.' });
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.email || '')) {
-        return res.status(400).json({ error: 'Please provide a valid email address.' });
-      }
-      if (
-        !sanitizeString(address.houseFlat, 160) ||
-        !sanitizeString(address.street, 200) ||
-        !sanitizeString(address.city, 80) ||
-        !sanitizeString(address.state, 80)
-      ) {
-        return res
-          .status(400)
-          .json({ error: 'Complete house/flat, street, city, and state fields are required.' });
-      }
-      if (paymentMethod !== 'razorpay' && paymentMethod !== 'cod') {
-        return res.status(400).json({ error: 'Unsupported payment method.' });
-      }
-      if (paymentMethod === 'cod' && !db.settings.codEnabled) {
-        return res.status(400).json({ error: 'Cash on Delivery is currently disabled.' });
-      }
-      if (paymentMethod === 'razorpay' && !db.settings.razorpayEnabled) {
-        return res.status(400).json({
-          error:
-            'Online payment is currently unavailable. Please choose Cash on Delivery or contact the concierge.',
-        });
-      }
-
-      // Consolidate duplicate rows so one variant cannot exceed stock across lines.
-      const requestedLines = new Map<string, { productId: string; variantId: string; quantity: number }>();
-      for (const reqItem of rawItems) {
-        const quantity = Math.floor(Number(reqItem.quantity ?? 1));
-        if (!Number.isFinite(quantity) || quantity < 1) {
-          return res.status(400).json({ error: 'Please select a valid quantity for each item.' });
-        }
-        const key = `${reqItem.productId}::${reqItem.variantId}`;
-        const existingLine = requestedLines.get(key);
-        requestedLines.set(key, {
-          productId: reqItem.productId,
-          variantId: reqItem.variantId,
-          quantity: (existingLine?.quantity || 0) + quantity,
-        });
-      }
-
-      // Server-side authoritative product, price, and stock resolution.
-      const snapshots: OrderItemSnapshot[] = [];
-      const calcItems: CartItem[] = [];
-      for (const reqItem of requestedLines.values()) {
-        const qty = reqItem.quantity;
-        if (qty > 20) {
-          return res.status(400).json({
-            error: 'For quantities above 20 units, please contact our concierge for a bespoke order.',
-          });
-        }
-        const prod = db.products.find((p) => p.id === reqItem.productId && !p.isArchived);
-        if (!prod) return res.status(400).json({ error: 'One of the selected products is unavailable.' });
-        const variant = prod.variants.find((v) => v.id === reqItem.variantId);
-        if (!variant) return res.status(400).json({ error: `Variant unavailable for ${prod.name}.` });
-        if (variant.stock < qty) {
-          return res.status(400).json({
-            error: `Insufficient stock for ${prod.name} (${variant.label}). Only ${variant.stock} left.`,
-          });
-        }
-        snapshots.push({
-          productId: prod.id,
-          productName: prod.name,
-          variantId: variant.id,
-          variantLabel: variant.label,
-          quantity: qty,
-          unitPrice: variant.price,
-          lineTotal: variant.price * qty,
-          image: prod.images[0] || '',
-        });
-        calcItems.push({
-          productId: prod.id,
-          slug: prod.slug,
-          name: prod.name,
-          image: prod.images[0] || '',
-          variantId: variant.id,
-          variantLabel: variant.label,
-          unitPrice: variant.price,
-          quantity: qty,
-          maxStock: variant.stock,
-        });
-      }
-
-      const subtotalCheck = snapshots.reduce((sum, item) => sum + item.lineTotal, 0);
-      let appliedCoupon: Coupon | null = null;
-      if (couponCode) {
-        const found = db.coupons.find((c) => c.code.toUpperCase() === couponCode && c.active);
-        if (found && subtotalCheck >= found.minOrderAmount) {
-          appliedCoupon = found;
-        }
-      }
-
-      const breakdown = calculatePricingBreakdown(calcItems, appliedCoupon, db.settings, giftWrapSelected);
-      const now = new Date().toISOString();
-
-      const newOrder: Order = {
-        id: `ord-${randomHex(5)}`,
-        orderNumber: '',
-        channel: 'online',
-        customerId: req.session?.userId,
-        address: {
-          fullName: sanitizeString(address.fullName, 100),
-          mobile: sanitizeString(address.mobile, 15),
-          email: sanitizeString(address.email, 120).toLowerCase(),
-          houseFlat: sanitizeString(address.houseFlat, 160),
-          street: sanitizeString(address.street, 200),
-          landmark: sanitizeString(address.landmark || '', 120),
-          city: sanitizeString(address.city, 80),
-          state: sanitizeString(address.state, 80),
-          pincode: sanitizeString(address.pincode, 10),
-        },
-        items: snapshots,
-        subtotal: breakdown.subtotal,
-        discountAmount: breakdown.discountAmount,
-        couponCode: appliedCoupon?.code,
-        giftWrapSelected,
-        giftWrapFee: breakdown.giftWrapFee,
-        giftMessage: giftMessage || undefined,
-        shippingFee: breakdown.shippingFee,
-        taxAmount: breakdown.taxAmount,
-        totalAmount: breakdown.totalAmount,
-        paymentMethod,
-        // Never mark an order paid at creation time; verification happens serverside.
-        paymentStatus: 'pending',
-        orderStatus: paymentMethod === 'cod' ? 'processing' : 'pending',
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await saveDb((draft) => {
-        // Re-check inside the commit so concurrent checkouts cannot oversell.
-        for (const snapshot of snapshots) {
-          const product = draft.products.find((p) => p.id === snapshot.productId);
-          const variant = product?.variants.find((v) => v.id === snapshot.variantId);
-          if (!variant) {
-            throw new HttpError(409, `${snapshot.productName} is no longer available.`);
-          }
-          if (variant.stock < snapshot.quantity) {
-            throw new HttpError(
-              409,
-              `Insufficient stock for ${snapshot.productName} (${snapshot.variantLabel}). Only ${variant.stock} left.`
-            );
-          }
-          variant.stock -= snapshot.quantity;
-        }
-        newOrder.orderNumber = nextOrderNumber(draft.orders);
-        draft.orders.unshift(newOrder);
-      });
-
-      res.status(201).json({ order: newOrder });
-    } catch (err) {
-      if (err instanceof HttpError) {
-        return res.status(err.status).json({ error: err.message });
-      }
-      res.status(500).json({ error: (err as Error).message });
-    }
-  }
-);
-
-router.post(
-  '/api/payments/razorpay/webhook',
-  async (req, res) => {
-    try {
-      const rawBody = req.rawBody;
-      const signature = req.header('x-razorpay-signature');
-      if (!(await verifyRazorpayWebhookSignature(req.env, rawBody, signature))) {
-        return res.status(400).json({ error: 'Invalid webhook signature.' });
-      }
-
-      const event = JSON.parse(rawBody) as {
-        event: string;
-        payload?: { payment?: { entity?: { id?: string; order_id?: string; status?: string } } };
-      };
-      const entity = event.payload?.payment?.entity;
-
-      if (entity?.order_id) {
-        await saveDb((db) => {
-          const order = db.orders.find((o) => o.razorpayOrderId === entity.order_id);
-          if (!order) return;
-          if (event.event === 'payment.captured') {
-            order.paymentStatus = 'paid';
-            order.razorpayPaymentId = entity.id || order.razorpayPaymentId;
-            if (order.orderStatus === 'pending') order.orderStatus = 'processing';
-            order.updatedAt = new Date().toISOString();
-          } else if (event.event === 'payment.failed') {
-            order.paymentStatus = 'failed';
-            order.updatedAt = new Date().toISOString();
-          } else if (event.event === 'refund.processed') {
-            order.paymentStatus = 'refunded';
-            order.orderStatus = 'refunded';
-            order.updatedAt = new Date().toISOString();
-          }
-        });
-      }
-
-      res.json({ received: true });
-    } catch (err) {
-      res.status(500).json({ error: (err as Error).message });
-    }
-  }
-);
-
-router.post('/api/payments/razorpay/create-order', async (req, res) => {
-  try {
-    const orderId = sanitizeString(req.body.orderId, 80);
-    const db = getDb();
-    const order = db.orders.find((o) => o.id === orderId);
-    if (!order) return res.status(404).json({ error: 'Order not found.' });
-
-    const gatewayOrder = await createGatewayOrder(req.env, {
-      amountInPaise: Math.round(order.totalAmount * 100),
-      receipt: order.orderNumber,
-    });
-
-    await saveDb((draft) => {
-      const target = draft.orders.find((o) => o.id === orderId);
-      if (target) {
-        target.razorpayOrderId = gatewayOrder.id;
-        target.updatedAt = new Date().toISOString();
-      }
-    });
-
-    res.json({
-      razorpayOrderId: gatewayOrder.id,
-      amount: gatewayOrder.amount,
-      currency: gatewayOrder.currency,
-      mode: gatewayOrder.mode,
-      keyId: getRazorpayPublicKeyId(req.env),
-    });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
-});
-
-// Server-side cryptographic verification for a live Razorpay Checkout response.
-router.post('/api/payments/razorpay/verify', async (req, res) => {
-  const orderId = sanitizeString(req.body.orderId, 80);
-  const razorpayOrderId = sanitizeString(req.body.razorpay_order_id, 100);
-  const razorpayPaymentId = sanitizeString(req.body.razorpay_payment_id, 100);
-  const razorpaySignature = sanitizeString(req.body.razorpay_signature, 200);
-
-  const db = getDb();
-  const order = db.orders.find((o) => o.id === orderId);
-  if (!order || order.razorpayOrderId !== razorpayOrderId) {
-    return res.status(404).json({ error: 'Matching gateway order not found.' });
-  }
-
-  const valid = await verifyRazorpayPaymentSignature(req.env, {
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-  });
-
-  if (!valid) {
-    await saveDb((draft) => {
-      const target = draft.orders.find((o) => o.id === orderId);
-      if (target) {
-        target.paymentStatus = 'failed';
-        target.updatedAt = new Date().toISOString();
-      }
-    });
-    return res
-      .status(400)
-      .json({ error: 'Payment signature verification failed. Order has NOT been marked paid.' });
-  }
-
-  await saveDb((draft) => {
-    const target = draft.orders.find((o) => o.id === orderId);
-    if (target) {
-      target.paymentStatus = 'paid';
-      target.razorpayPaymentId = razorpayPaymentId;
-      target.orderStatus = 'processing';
-      target.updatedAt = new Date().toISOString();
-    }
-  });
-
-  res.json({ verified: true, order: getDb().orders.find((o) => o.id === orderId) });
-});
-
-router.get('/api/orders/track', rateLimit(10, 60_000), (req, res) => {
-  const orderNumber = sanitizeString(req.query.orderNumber, 40).toUpperCase();
-  const contact = sanitizeString(req.query.contact, 120).toLowerCase();
-  if (!orderNumber) return res.status(400).json({ error: 'Order number is required.' });
-  if (!contact) {
-    return res.status(400).json({ error: 'Please enter the email or mobile used for this order.' });
-  }
-
-  const db = getDb();
-  const order = db.orders.find((o) => o.orderNumber.toUpperCase() === orderNumber);
-  if (!order) return res.status(404).json({ error: 'No order found matching that order number.' });
-
-  const matchesEmail = order.address.email.toLowerCase() === contact;
-  const digits = contact.replace(/\D/g, '');
-  const orderDigits = order.address.mobile.replace(/\D/g, '');
-  const matchesPhone = digits.length >= 10 && orderDigits.endsWith(digits.slice(-10));
-  if (!matchesEmail && !matchesPhone) {
-    return res.status(403).json({ error: 'Contact email or mobile does not match this order.' });
-  }
-  res.json({
-    order: {
-      ...order,
-      customerId: undefined,
-      adminNotes: undefined,
-      cancellationReason: undefined,
-      returnReason: undefined,
-      giftMessage: undefined,
-      razorpayOrderId: undefined,
-      razorpayPaymentId: undefined,
-      address: {
-        ...order.address,
-        fullName: '',
-        mobile: '',
-        email: '',
-        houseFlat: '',
-        street: '',
-        landmark: '',
-      },
-    },
-  });
-});
-
-router.post('/api/orders/:orderNumber/cancel', async (req, res) => {
-  const orderNumber = sanitizeString(req.params.orderNumber, 40).toUpperCase();
-  const reason = sanitizeString(req.body.reason, 300) || 'Customer requested cancellation';
-  const db = getDb();
-  const existing = db.orders.find((o) => o.orderNumber.toUpperCase() === orderNumber);
-  if (!existing) return res.status(404).json({ error: 'Order not found.' });
-  if (!req.session) {
-    return res
-      .status(401)
-      .json({ error: 'Please sign in to manage this order, or contact the concierge on WhatsApp.' });
-  }
-  if (!canManageOrder(req, existing)) {
-    return res.status(403).json({ error: 'You can only manage orders placed with this account.' });
-  }
-  if (['shipped', 'delivered', 'cancelled', 'refunded'].includes(existing.orderStatus)) {
-    return res.status(400).json({ error: `Cannot cancel order in "${existing.orderStatus}" status.` });
-  }
-
-  const saved = await saveDb((draft) => {
-    const target = draft.orders.find((o) => o.orderNumber.toUpperCase() === orderNumber);
-    if (!target) throw new HttpError(404, 'Order not found.');
-    if (target.orderStatus === 'cancelled') return;
-    if (['shipped', 'delivered', 'refunded'].includes(target.orderStatus)) {
-      throw new HttpError(400, `Cannot cancel order in "${target.orderStatus}" status.`);
-    }
-
-    target.orderStatus = 'cancelled';
-    target.cancellationReason = reason;
-    if (target.paymentStatus === 'paid') target.paymentStatus = 'refunded';
-    target.updatedAt = new Date().toISOString();
-    for (const item of target.items) {
-      const product = draft.products.find((p) => p.id === item.productId);
-      const variant = product?.variants.find((v) => v.id === item.variantId);
-      if (variant) variant.stock += item.quantity;
-    }
-  });
-
-  res.json({ order: saved.orders.find((o) => o.orderNumber.toUpperCase() === orderNumber) });
-});
-
-router.post('/api/orders/:orderNumber/return', async (req, res) => {
-  const orderNumber = sanitizeString(req.params.orderNumber, 40).toUpperCase();
-  const reason = sanitizeString(req.body.reason, 400);
-  if (!reason) return res.status(400).json({ error: 'Please specify a reason for return or refund.' });
-
-  const db = getDb();
-  const existing = db.orders.find((o) => o.orderNumber.toUpperCase() === orderNumber);
-  if (!existing) return res.status(404).json({ error: 'Order not found.' });
-  if (!req.session) {
-    return res
-      .status(401)
-      .json({ error: 'Please sign in to manage this order, or contact the concierge on WhatsApp.' });
-  }
-  if (!canManageOrder(req, existing)) {
-    return res.status(403).json({ error: 'You can only manage orders placed with this account.' });
-  }
-  if (existing.orderStatus !== 'delivered') {
-    return res
-      .status(400)
-      .json({ error: 'Return requests can only be submitted for delivered orders.' });
-  }
-
-  await saveDb((draft) => {
-    const target = draft.orders.find((o) => o.orderNumber.toUpperCase() === orderNumber);
-    if (target) {
-      target.orderStatus = 'return_requested';
-      target.returnReason = reason;
-      target.updatedAt = new Date().toISOString();
-    }
-  });
-
-  res.json({ order: getDb().orders.find((o) => o.orderNumber.toUpperCase() === orderNumber) });
-});
-
-// ---------- ADMIN DASHBOARD ----------
-router.get('/api/admin/overview', requireAdmin, (_req, res) => {
-  const db = getDb();
-  const todayPrefix = new Date().toISOString().slice(0, 10);
-  const monthPrefix = new Date().toISOString().slice(0, 7);
-
-  const validOrders = db.orders.filter(
-    (o) => o.orderStatus !== 'cancelled' && o.orderStatus !== 'refunded'
-  );
-  const totalRevenue = validOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const todaySales = validOrders
-    .filter((o) => o.createdAt.startsWith(todayPrefix))
-    .reduce((sum, o) => sum + o.totalAmount, 0);
-  const monthlySales = validOrders
-    .filter((o) => o.createdAt.startsWith(monthPrefix))
-    .reduce((sum, o) => sum + o.totalAmount, 0);
-
-  const statusCounts = {
-    pending: db.orders.filter((o) => o.orderStatus === 'pending').length,
-    processing: db.orders.filter((o) => o.orderStatus === 'processing').length,
-    shipped: db.orders.filter((o) => o.orderStatus === 'shipped').length,
-    delivered: db.orders.filter((o) => o.orderStatus === 'delivered').length,
-    cancelled: db.orders.filter((o) => o.orderStatus === 'cancelled').length,
-    return_requested: db.orders.filter((o) => o.orderStatus === 'return_requested').length,
-  };
-
-  const productSales = new Map<string, { productId: string; name: string; units: number; revenue: number }>();
-  for (const order of validOrders) {
-    for (const item of order.items) {
-      const current = productSales.get(item.productId) || {
-        productId: item.productId,
-        name: item.productName,
-        units: 0,
-        revenue: 0,
-      };
-      current.units += item.quantity;
-      current.revenue += item.lineTotal;
-      productSales.set(item.productId, current);
-    }
-  }
-  const bestsellingProducts = [...productSales.values()].sort((a, b) => b.units - a.units).slice(0, 5);
-
-  const threshold = db.settings.lowStockThreshold || 8;
-  const lowStockProducts = db.products
-    .filter((p) => !p.isArchived)
-    .flatMap((p) =>
-      p.variants
-        .filter((v) => v.stock <= threshold)
-        .map((v) => ({ productId: p.id, productName: p.name, variantLabel: v.label, stock: v.stock, sku: v.sku }))
-    );
-
-  res.json({
-    totalOrders: db.orders.length,
-    totalRevenue,
-    todaySales,
-    monthlySales,
-    totalCustomers: getOrderCustomers(db.orders).length,
-    statusCounts,
-    bestsellingProducts,
-    lowStockProducts,
-  });
-});
-
+// ---------- ADMIN CATALOGUE MANAGEMENT ----------
 router.get('/api/admin/products', requireAdmin, (_req, res) => {
   res.json(getDb().products);
 });
@@ -994,7 +307,7 @@ router.post('/api/admin/products', requireAdmin, async (req, res) => {
   if (!variants) return res.status(400).json({ error: 'Enter valid variant labels, prices, stock, and SKUs.' });
   const images =
     body.images === undefined
-      ? ['/src/assets/images/product_candle_oud_velvet_1794827351032.jpg']
+      ? ['/brand/eramora/campaigns/fragrance-art.jpg']
       : parseProductImages(body.images);
   if (!images) return res.status(400).json({ error: 'Add between 1 and 12 valid product image URLs.' });
   const slugBase = name
@@ -1151,7 +464,7 @@ router.post('/api/admin/categories', requireAdmin, async (req, res) => {
     slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
     description: sanitizeString(req.body.description || '', 260),
     image: sanitizeString(
-      req.body.image || '/src/assets/images/product_candle_oud_velvet_1794827351032.jpg',
+      req.body.image || '/brand/eramora/campaigns/fragrance-art.jpg',
       300
     ),
     featured: Boolean(req.body.featured ?? true),
@@ -1166,261 +479,6 @@ router.post('/api/admin/categories', requireAdmin, async (req, res) => {
 router.delete('/api/admin/categories/:id', requireAdmin, async (req, res) => {
   await saveDb((db) => {
     db.categories = db.categories.filter((c) => c.id !== req.params.id);
-  });
-  res.json({ ok: true });
-});
-
-router.get('/api/admin/orders', requireAdmin, (req, res) => {
-  const db = getDb();
-  const status = typeof req.query.status === 'string' ? req.query.status : '';
-  const q = typeof req.query.q === 'string' ? req.query.q.toLowerCase().trim() : '';
-  let orders = [...db.orders];
-  if (status && status !== 'all') {
-    orders = orders.filter((o) => o.orderStatus === status);
-  }
-  if (q) {
-    orders = orders.filter(
-      (o) =>
-        o.orderNumber.toLowerCase().includes(q) ||
-        o.address.fullName.toLowerCase().includes(q) ||
-        o.address.mobile.includes(q) ||
-        o.address.email.toLowerCase().includes(q)
-    );
-  }
-  res.json(orders);
-});
-
-router.patch('/api/admin/orders/:id', requireAdmin, async (req, res) => {
-  const id = req.params.id;
-  const db = getDb();
-  if (!db.orders.some((o) => o.id === id)) return res.status(404).json({ error: 'Order not found.' });
-  const allowedFields = ['orderStatus', 'paymentStatus', 'trackingNumber', 'courierName', 'adminNotes'];
-  if (!allowedFields.some((field) => Object.prototype.hasOwnProperty.call(req.body, field))) {
-    return res.status(400).json({ error: 'Choose an order field to update.' });
-  }
-  const allowedOrderStatuses: OrderStatus[] = [
-    'pending',
-    'processing',
-    'shipped',
-    'delivered',
-    'cancelled',
-    'return_requested',
-    'refunded',
-  ];
-  const allowedPaymentStatuses: PaymentStatus[] = [
-    'pending',
-    'awaiting_verification',
-    'paid',
-    'failed',
-    'refunded',
-  ];
-  if (req.body.orderStatus !== undefined && !allowedOrderStatuses.includes(req.body.orderStatus)) {
-    return res.status(400).json({ error: 'Choose a valid order status.' });
-  }
-  if (req.body.paymentStatus !== undefined && !allowedPaymentStatuses.includes(req.body.paymentStatus)) {
-    return res.status(400).json({ error: 'Choose a valid payment status.' });
-  }
-
-  const saved = await saveDb((draft) => {
-    const target = draft.orders.find((o) => o.id === id);
-    if (!target) throw new HttpError(404, 'Order not found.');
-    if (req.body.orderStatus !== undefined) target.orderStatus = req.body.orderStatus as OrderStatus;
-    if (req.body.paymentStatus !== undefined) target.paymentStatus = req.body.paymentStatus as PaymentStatus;
-    if (req.body.trackingNumber !== undefined) {
-      target.trackingNumber = sanitizeString(req.body.trackingNumber, 100);
-    }
-    if (req.body.courierName !== undefined) {
-      target.courierName = sanitizeString(req.body.courierName, 100);
-    }
-    if (req.body.adminNotes !== undefined) target.adminNotes = sanitizeString(req.body.adminNotes, 500);
-    target.updatedAt = new Date().toISOString();
-  });
-
-  const updatedOrder = saved.orders.find((o) => o.id === id);
-  if (!updatedOrder) return res.status(404).json({ error: 'Order not found.' });
-  res.json(updatedOrder);
-});
-
-router.post('/api/admin/orders/whatsapp', requireAdmin, async (req, res) => {
-  const customerName = sanitizeString(req.body.customerName, 100);
-  const mobile = sanitizeString(req.body.mobile, 20);
-  const email = sanitizeString(req.body.email, 120).toLowerCase();
-  const city = sanitizeString(req.body.city, 80);
-  const state = sanitizeString(req.body.state, 80);
-  const pincode = sanitizeString(req.body.pincode, 10);
-  const houseFlat = sanitizeString(req.body.houseFlat, 160);
-  const street = sanitizeString(req.body.street, 200);
-  const landmark = sanitizeString(req.body.landmark, 160);
-  const paymentStatus = req.body.paymentStatus as PaymentStatus;
-  const giftWrapSelected = req.body.giftWrapSelected === true;
-  const giftMessage = sanitizeString(req.body.giftMessage, 250);
-  const rawItems: unknown[] = Array.isArray(req.body.items)
-    ? req.body.items
-    : [{ productId: req.body.productId, variantId: req.body.variantId, quantity: req.body.quantity }];
-  if (!customerName || !validateIndianMobile(mobile) || !houseFlat || !street || !city || !state) {
-    return res.status(400).json({ error: 'Provide the customer name, valid mobile, and complete delivery address.' });
-  }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Enter a valid email address or leave it blank.' });
-  }
-  if (rawItems.length === 0 || rawItems.length > 20) {
-    return res.status(400).json({ error: 'An order must contain between 1 and 20 product lines.' });
-  }
-  if (paymentStatus !== 'awaiting_verification' && paymentStatus !== 'paid') {
-    return res.status(400).json({ error: 'Choose a supported WhatsApp payment status.' });
-  }
-
-  const requestedItems = new Map<string, { productId: string; variantId: string; quantity: number }>();
-  for (const rawItem of rawItems) {
-    if (!rawItem || typeof rawItem !== 'object') {
-      return res.status(400).json({ error: 'Every order line must include a product, variant, and quantity.' });
-    }
-    const item = rawItem as Record<string, unknown>;
-    const productId = sanitizeString(item.productId, 80);
-    const variantId = sanitizeString(item.variantId, 80);
-    const quantity = Number(item.quantity);
-    if (!productId || !variantId || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 20) {
-      return res.status(400).json({ error: 'Every order line needs a valid product, variant, and quantity.' });
-    }
-    const key = `${productId}::${variantId}`;
-    const currentQuantity = (requestedItems.get(key)?.quantity || 0) + quantity;
-    if (currentQuantity > 20) {
-      return res.status(400).json({ error: 'Quantities above 20 units require a bespoke order.' });
-    }
-    requestedItems.set(key, { productId, variantId, quantity: currentQuantity });
-  }
-
-  const db = getDb();
-  const orderItems: OrderItemSnapshot[] = [];
-  let subtotal = 0;
-  for (const item of requestedItems.values()) {
-    const product = db.products.find((candidate) => candidate.id === item.productId && !candidate.isArchived);
-    const variant = product?.variants.find((candidate) => candidate.id === item.variantId);
-    if (!product || !variant) return res.status(404).json({ error: 'One of the selected products is unavailable.' });
-    if (variant.stock < item.quantity) {
-      return res.status(400).json({ error: `Only ${variant.stock} units of ${product.name} are in stock.` });
-    }
-    const lineTotal = variant.price * item.quantity;
-    subtotal += lineTotal;
-    orderItems.push({
-      productId: product.id,
-      productName: product.name,
-      variantId: variant.id,
-      variantLabel: variant.label,
-      quantity: item.quantity,
-      unitPrice: variant.price,
-      lineTotal,
-      image: product.images[0] || '',
-    });
-  }
-
-  const shippingFee = subtotal >= db.settings.freeShippingThreshold ? 0 : db.settings.standardShippingFee;
-  const giftWrapFee = giftWrapSelected ? db.settings.giftWrapFee : 0;
-  const totalAmount = subtotal + shippingFee + giftWrapFee;
-  const now = new Date().toISOString();
-
-  const order: Order = {
-    id: `ord-${randomHex(5)}`,
-    orderNumber: '',
-    channel: 'whatsapp',
-    address: {
-      fullName: customerName,
-      mobile,
-      email,
-      houseFlat,
-      street,
-      landmark,
-      city,
-      state,
-      pincode,
-    },
-    items: orderItems,
-    subtotal,
-    discountAmount: 0,
-    giftWrapSelected,
-    giftWrapFee,
-    giftMessage: giftMessage || undefined,
-    shippingFee,
-    taxAmount: Math.round(subtotal - subtotal / (1 + db.settings.gstRatePercent / 100)),
-    totalAmount,
-    paymentMethod: 'whatsapp_manual',
-    paymentStatus,
-    orderStatus: paymentStatus === 'paid' ? 'processing' : 'pending',
-    adminNotes: sanitizeString(req.body.notes || 'Recorded from WhatsApp Concierge desk.', 400),
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await saveDb((draft) => {
-    for (const item of orderItems) {
-      const targetProduct = draft.products.find((product) => product.id === item.productId);
-      const targetVariant = targetProduct?.variants.find((variant) => variant.id === item.variantId);
-      if (!targetVariant || targetVariant.stock < item.quantity) {
-        throw new HttpError(
-          409,
-          `Only ${targetVariant?.stock ?? 0} units of ${item.productName} are in stock.`
-        );
-      }
-    }
-    for (const item of orderItems) {
-      const targetProduct = draft.products.find((product) => product.id === item.productId);
-      const targetVariant = targetProduct?.variants.find((variant) => variant.id === item.variantId);
-      if (targetVariant) {
-        targetVariant.stock -= item.quantity;
-      }
-    }
-    order.orderNumber = nextOrderNumber(draft.orders, 'ERA-WA');
-    draft.orders.unshift(order);
-  });
-
-  res.status(201).json(order);
-});
-
-router.get('/api/admin/customers', requireAdmin, (_req, res) => {
-  const db = getDb();
-  res.json({ customers: getOrderCustomers(db.orders), enquiries: db.enquiries });
-});
-
-router.patch('/api/admin/enquiries/:id', requireAdmin, async (req, res) => {
-  await saveDb((db) => {
-    const enquiry = db.enquiries.find((e) => e.id === req.params.id);
-    if (enquiry && ['open', 'responded', 'closed'].includes(req.body.status)) {
-      enquiry.status = req.body.status;
-    }
-  });
-  res.json({ ok: true });
-});
-
-router.get('/api/admin/marketing', requireAdmin, (_req, res) => {
-  const db = getDb();
-  res.json({
-    coupons: db.coupons,
-    banners: db.banners,
-  });
-});
-
-router.post('/api/admin/coupons', requireAdmin, async (req, res) => {
-  const code = sanitizeString(req.body.code, 40).toUpperCase();
-  if (!code) return res.status(400).json({ error: 'Coupon code is required.' });
-  const coupon: Coupon = {
-    id: `cpn-${randomHex(3)}`,
-    code,
-    description: sanitizeString(req.body.description || `${code} Offer`, 160),
-    discountType: req.body.discountType === 'flat' ? 'flat' : 'percentage',
-    discountValue: Math.max(1, Number(req.body.discountValue || 10)),
-    minOrderAmount: Math.max(0, Number(req.body.minOrderAmount || 0)),
-    maxDiscount: req.body.maxDiscount ? Number(req.body.maxDiscount) : undefined,
-    active: true,
-  };
-  await saveDb((db) => {
-    db.coupons.unshift(coupon);
-  });
-  res.status(201).json(coupon);
-});
-
-router.delete('/api/admin/coupons/:id', requireAdmin, async (req, res) => {
-  await saveDb((db) => {
-    db.coupons = db.coupons.filter((c) => c.id !== req.params.id);
   });
   res.json({ ok: true });
 });
@@ -1457,50 +515,11 @@ router.put('/api/admin/settings', requireAdmin, async (req, res) => {
       settings.instagramHandle = sanitizeString(req.body.instagramHandle, 80);
     }
     if (req.body.instagramUrl !== undefined) settings.instagramUrl = sanitizeString(req.body.instagramUrl, 200);
-    if (req.body.freeShippingThreshold !== undefined) {
-      settings.freeShippingThreshold = Math.max(0, Number(req.body.freeShippingThreshold));
-    }
-    if (req.body.standardShippingFee !== undefined) {
-      settings.standardShippingFee = Math.max(0, Number(req.body.standardShippingFee));
-    }
-    if (req.body.giftWrapFee !== undefined) {
-      settings.giftWrapFee = Math.max(0, Number(req.body.giftWrapFee));
-    }
-    if (req.body.gstRatePercent !== undefined) {
-      settings.gstRatePercent = Math.max(0, Number(req.body.gstRatePercent));
-    }
-    if (req.body.taxInclusive !== undefined) settings.taxInclusive = Boolean(req.body.taxInclusive);
-    if (req.body.codEnabled !== undefined) settings.codEnabled = Boolean(req.body.codEnabled);
-    if (req.body.razorpayEnabled !== undefined) {
-      settings.razorpayEnabled = Boolean(req.body.razorpayEnabled);
-    }
     if (req.body.whatsappOrderingEnabled !== undefined) {
       settings.whatsappOrderingEnabled = Boolean(req.body.whatsappOrderingEnabled);
     }
-    if (req.body.lowStockThreshold !== undefined) {
-      settings.lowStockThreshold = Math.max(1, Number(req.body.lowStockThreshold));
-    }
-    if (req.body.policies) {
-      settings.policies = {
-        shipping: sanitizeString(req.body.policies.shipping ?? settings.policies.shipping, 2000),
-        returns: sanitizeString(req.body.policies.returns ?? settings.policies.returns, 2000),
-        privacy: WHATSAPP_ONLY_PRIVACY_POLICY,
-        terms: sanitizeString(req.body.policies.terms ?? settings.policies.terms, 2000),
-      };
-    }
   });
   res.json(getDb().settings);
-});
-
-router.get('/api/admin/backup', requireAdmin, (_req, res) => {
-  const db = getDb();
-  const safeUsers = db.users.map(({ passwordHash: _ph, ...u }) => u);
-  const snapshot = { ...db, users: safeUsers, exportedAt: new Date().toISOString() };
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename="eramora-backup-${new Date().toISOString().slice(0, 10)}.json"`
-  );
-  res.json(snapshot);
 });
 
 // ---------- SITEMAP, MEDIA, ASSETS ----------
@@ -1580,6 +599,11 @@ const PAGE_SEO: Record<string, SeoMetadata> = {
     title: 'Terms & Conditions | ERAMORA',
     description: 'Read the ERAMORA terms and conditions.',
     canonicalPath: '/terms',
+  },
+  '/grievance-redressal': {
+    title: 'Grievance Redressal | ERAMORA',
+    description: "Contact ERAMORA's grievance officer for assistance with a complaint.",
+    canonicalPath: '/grievance-redressal',
   },
   '/cart': {
     title: 'Shopping Bag | ERAMORA',
@@ -1708,6 +732,7 @@ function renderSitemap(): Response {
     '/returns-policy',
     '/privacy-policy',
     '/terms',
+    '/grievance-redressal',
   ];
   const urls = [
     ...staticPaths.map(
@@ -1778,6 +803,32 @@ function renderProductFeed(): Response {
   );
 }
 
+async function readLimitedBody(request: Request, limit: number): Promise<string | null> {
+  if (!request.body) return '';
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+
 async function serveUpload(env: Env, url: URL): Promise<Response> {
   const key = decodeURIComponent(url.pathname.slice('/uploads/'.length));
   if (!/^[A-Za-z0-9._-]+$/.test(key)) {
@@ -1828,6 +879,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     url.pathname === '/api/enquiries' ||
     url.pathname === '/api/pincode/check' ||
     url.pathname === '/api/analytics/abandoned-cart' ||
+    url.pathname === '/api/coupons/validate' ||
     /^\/api\/products\/[^/]+\/reviews$/.test(url.pathname) ||
     url.pathname === '/api/admin/orders' ||
     url.pathname.startsWith('/api/admin/orders/') ||
@@ -1835,19 +887,14 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     url.pathname === '/api/admin/enquiries' ||
     url.pathname.startsWith('/api/admin/enquiries/') ||
     url.pathname === '/api/admin/overview' ||
-    url.pathname === '/api/admin/backup';
+    url.pathname === '/api/admin/backup' ||
+    url.pathname === '/api/admin/marketing' ||
+    url.pathname === '/api/admin/coupons' ||
+    url.pathname.startsWith('/api/admin/coupons/');
   if (personalDataEndpoints) {
     res.status(410).json({
       error: 'ERAMORA does not collect orders or customer details on this website. Please use the WhatsApp concierge.',
     });
-    return withSecurityHeaders(res.toResponse(), url.protocol === 'https:');
-  }
-
-  if (
-    request.method === 'POST' &&
-    (url.pathname === '/api/orders' || url.pathname.startsWith('/api/payments/'))
-  ) {
-    res.status(410).json({ error: 'Please submit order requests through the ERAMORA WhatsApp concierge.' });
     return withSecurityHeaders(res.toResponse(), url.protocol === 'https:');
   }
 
@@ -1857,8 +904,13 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return withSecurityHeaders(res.toResponse(), url.protocol === 'https:');
   }
 
-  const contentLength = Number(request.headers.get('content-length') || 0);
-  if (Number.isFinite(contentLength) && contentLength > 6 * 1024 * 1024) {
+  const maxBodyBytes = url.pathname === '/api/admin/upload' ? 2.5 * 1024 * 1024 : 64 * 1024;
+  const contentLengthHeader = request.headers.get('content-length');
+  const contentLength = contentLengthHeader === null ? 0 : Number(contentLengthHeader);
+  if (
+    (contentLengthHeader !== null && !Number.isSafeInteger(contentLength)) ||
+    (Number.isFinite(contentLength) && contentLength > maxBodyBytes)
+  ) {
     res.status(413).json({ error: 'Request body is too large.' });
     return withSecurityHeaders(res.toResponse(), url.protocol === 'https:');
   }
@@ -1867,7 +919,12 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   let body: any = {};
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    rawBody = await request.text();
+    const limitedBody = await readLimitedBody(request, maxBodyBytes);
+    if (limitedBody === null) {
+      res.status(413).json({ error: 'Request body is too large.' });
+      return withSecurityHeaders(res.toResponse(), url.protocol === 'https:');
+    }
+    rawBody = limitedBody;
     const contentType = request.headers.get('content-type') || '';
     if (rawBody && contentType.includes('application/json')) {
       try {

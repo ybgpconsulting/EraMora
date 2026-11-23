@@ -1,8 +1,9 @@
-# Copy to .dev.vars for local `wrangler dev` overrides. These demo values are
-# development-only and must never be used in a deployed environment.
+# Copy to .dev.vars and set local-only values before the first API request.
 
 ENVIRONMENT="development"
-# SESSION_SECRET="change-me-to-a-long-random-string"
-ADMIN_DEMO_PASSWORD="EramoraLocalOnly@2026"
+# SESSION_SECRET: set a random value of at least 32 characters.
+# ADMIN_DEMO_PASSWORD: optionally set a local password (12-256 characters).
+# SESSION_SECRET=""
+# ADMIN_DEMO_PASSWORD=""
 # APP_URL="https://your-domain.example"
 

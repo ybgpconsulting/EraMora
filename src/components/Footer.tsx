@@ -19,6 +19,7 @@ const careLinks = [
   { label: 'Returns', href: '/returns-policy' },
   { label: 'Privacy', href: '/privacy-policy' },
   { label: 'Terms', href: '/terms' },
+  { label: 'Grievance Redressal', href: '/grievance-redressal' },
 ];
 
 const linkClassName =

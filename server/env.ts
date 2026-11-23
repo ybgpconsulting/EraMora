@@ -15,9 +15,4 @@ export interface Env {
   ADMIN_DEMO_PASSWORD?: string;
   APP_URL?: string;
   ENVIRONMENT?: string;
-
-  // Optional. Without both keys the store runs in local sandbox payment mode.
-  RAZORPAY_KEY_ID?: string;
-  RAZORPAY_KEY_SECRET?: string;
-  RAZORPAY_WEBHOOK_SECRET?: string;
 }

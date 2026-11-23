@@ -4,8 +4,7 @@ import type {
   BusinessSettings,
   CartItem,
   Category,
-  Coupon,
-  CustomerUser,
+  AdminUser,
   Product,
   StorePublicConfig,
 } from '../types/store';
@@ -27,14 +26,13 @@ interface StoreContextValue {
   loadingCatalog: boolean;
   refreshCatalog: () => Promise<void>;
   refreshConfig: () => Promise<void>;
-  user: CustomerUser | null;
+  user: AdminUser | null;
   authLoading: boolean;
-  login: (email: string, password: string) => Promise<CustomerUser>;
+  login: (email: string, password: string) => Promise<AdminUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   cart: CartItem[];
   cartCount: number;
-  cartSubtotal: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   isSearchOpen: boolean;
@@ -51,8 +49,6 @@ interface StoreContextValue {
   setGiftWrapSelected: (val: boolean) => void;
   giftMessage: string;
   setGiftMessage: (val: string) => void;
-  appliedCoupon: Coupon | null;
-  setAppliedCoupon: (coupon: Coupon | null) => void;
   notify: (text: string, tone?: 'info' | 'success' | 'error') => void;
 }
 
@@ -65,21 +61,7 @@ const DEFAULT_SETTINGS: BusinessSettings = {
   studioAddress: 'Sector 20, Noida, Uttar Pradesh – 201301, India',
   instagramHandle: '@eramora.in',
   instagramUrl: 'https://www.instagram.com/eramora.in/',
-  freeShippingThreshold: 0,
-  standardShippingFee: 0,
-  giftWrapFee: 0,
-  gstRatePercent: 0,
-  taxInclusive: false,
-  codEnabled: false,
-  razorpayEnabled: false,
   whatsappOrderingEnabled: true,
-  lowStockThreshold: 8,
-  policies: {
-    shipping: '',
-    returns: '',
-    privacy: '',
-    terms: '',
-  },
 };
 
 const DEFAULT_BANNERS: BannerConfig = {
@@ -90,7 +72,7 @@ const DEFAULT_BANNERS: BannerConfig = {
   heroSubheadline:
     'Curated fragrances, candles and gifting to make every moment memorable.',
   heroCtaLabel: 'Explore the Collection',
-  heroImage: '/src/assets/images/hero_eramora_atelier_1794827348612.jpg',
+  heroImage: '/brand/eramora/campaigns/brand-introduction.jpg',
   campaignTitle: 'The Art of Thoughtful Gifting',
   campaignSubtitle:
     'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal note.',
@@ -110,7 +92,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
-  const [user, setUser] = useState<CustomerUser | null>(null);
+  const [user, setUser] = useState<AdminUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -153,7 +135,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return '';
     }
   });
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -231,7 +212,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const [catRes, prodRes] = await Promise.all([fetch('/api/categories'), fetch('/api/products')]);
       if (catRes.ok) setCategories((await catRes.json()) as Category[]);
-      if (prodRes.ok) setProducts((await prodRes.json()) as Product[]);
+      if (prodRes.ok) {
+        const nextProducts = (await prodRes.json()) as Product[];
+        const demoIds = new Set(nextProducts.filter((product) => product.isShowcaseDemo).map((product) => product.id));
+        setProducts(nextProducts);
+        setCart((current) => current.filter((item) => !demoIds.has(item.productId)));
+      }
     } catch {
       // ignore
     } finally {
@@ -243,7 +229,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
-        const data = (await res.json()) as { user: CustomerUser | null };
+        const data = (await res.json()) as { user: AdminUser | null };
         setUser(data.user);
       }
     } catch {
@@ -265,7 +251,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    const data = (await res.json()) as { user?: CustomerUser; error?: string };
+    const data = (await res.json()) as { user?: AdminUser; error?: string };
     if (!res.ok || !data.user) {
       throw new Error(data.error || 'Login failed.');
     }
@@ -281,6 +267,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addToCart = useCallback(
     (item: CartItem, openDrawer = true) => {
+      if (products.find((product) => product.id === item.productId)?.isShowcaseDemo) {
+        notify('Showcase concepts are not available for purchase. Please contact our concierge for details.', 'info');
+        return;
+      }
       setCart((prev) => {
         const idx = prev.findIndex((i) => i.productId === item.productId && i.variantId === item.variantId);
         if (idx >= 0) {
@@ -295,7 +285,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       notify(`Added ${item.name} (${item.variantLabel}) to bag`, 'success');
       if (openDrawer) setIsCartOpen(true);
     },
-    [notify]
+    [notify, products]
   );
 
   const updateCartQuantity = useCallback((productId: string, variantId: string, quantity: number) => {
@@ -317,7 +307,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const clearCart = useCallback(() => {
     setCart([]);
-    setAppliedCoupon(null);
     setGiftWrapSelected(false);
     setGiftMessage('');
   }, []);
@@ -339,7 +328,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart]);
-  const cartSubtotal = useMemo(() => cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0), [cart]);
 
   const value: StoreContextValue = {
     path,
@@ -359,7 +347,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     refreshUser,
     cart,
     cartCount,
-    cartSubtotal,
     isCartOpen,
     setIsCartOpen,
     isSearchOpen,
@@ -376,8 +363,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setGiftWrapSelected,
     giftMessage,
     setGiftMessage,
-    appliedCoupon,
-    setAppliedCoupon,
     notify,
   };
 

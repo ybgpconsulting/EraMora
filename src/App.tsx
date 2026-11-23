@@ -16,7 +16,7 @@ import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { WishlistPage } from './pages/WishlistPage';
-import { AboutPage, ContactPage, FaqPage, PolicyPage } from './pages/EditorialPages';
+import { AboutPage, ContactPage, FaqPage, GrievancePage, PolicyPage } from './pages/EditorialPages';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 const AppRouter: React.FC = () => {
@@ -61,6 +61,8 @@ const AppRouter: React.FC = () => {
     page = <PolicyPage kind="privacy" />;
   } else if (pathname === '/terms') {
     page = <PolicyPage kind="terms" />;
+  } else if (pathname === '/grievance-redressal') {
+    page = <GrievancePage />;
   } else if (pathname === '/admin') {
     page = <AdminDashboardPage />;
   } else {

@@ -1,59 +1,35 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { ImageWithFallback } from '../components/ImageWithFallback';
-import { buildCartWhatsAppUrl, calculatePricingBreakdown, formatINR } from '../utils/commerce';
+import { buildCartWhatsAppUrl } from '../utils/commerce';
 
 export const CartPage: React.FC = () => {
   const {
     cart,
+    settings,
     updateCartQuantity,
     removeFromCart,
-    settings,
-    appliedCoupon,
-    setAppliedCoupon,
+    products,
     giftWrapSelected,
     setGiftWrapSelected,
     giftMessage,
     setGiftMessage,
     navigate,
-    notify,
   } = useStore();
 
-  const [couponInput, setCouponInput] = useState(appliedCoupon?.code || '');
-
-  const breakdown = calculatePricingBreakdown(cart, appliedCoupon, settings, giftWrapSelected);
+  const enquiryItems = cart.filter(
+    (item) => item.unitPrice > 0 && products.some((product) => product.id === item.productId && !product.isShowcaseDemo)
+  );
   const directWhatsAppUrl = buildCartWhatsAppUrl({
     whatsappNumber: settings.whatsappNumber,
     brandName: settings.brandName,
-    items: cart,
-    subtotal: breakdown.subtotal,
-    shippingFee: breakdown.shippingFee,
-    discountAmount: breakdown.discountAmount,
-    couponCode: appliedCoupon?.code,
-    giftWrapFee: breakdown.giftWrapFee,
+    items: enquiryItems,
+    giftWrapSelected,
     giftMessage,
-    totalAmount: breakdown.totalAmount,
   });
-
-  const handleApplyCoupon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/coupons/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponInput, subtotal: breakdown.subtotal }),
-      });
-      const data = (await res.json()) as { coupon?: typeof appliedCoupon; error?: string };
-      if (!res.ok || !data.coupon) throw new Error(data.error || 'Invalid coupon.');
-      setAppliedCoupon(data.coupon);
-      notify(`Applied coupon ${data.coupon.code}`, 'success');
-    } catch (err) {
-      notify((err as Error).message, 'error');
-    }
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-14">
@@ -68,7 +44,7 @@ export const CartPage: React.FC = () => {
         Your Shopping Bag
       </h1>
 
-      {cart.length === 0 ? (
+      {enquiryItems.length === 0 ? (
         <div className="py-16 text-center bg-[#F4EFE6]/50 border border-[#2C1E16]/10 space-y-4">
           <p className="font-serif text-2xl text-[#2C1E16]">Your shopping bag is empty</p>
           <p className="text-sm text-[#6B584C]">Discover signature candles, Eau de Parfum, and curated gift sets.</p>
@@ -83,7 +59,7 @@ export const CartPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-8 space-y-5">
-            {cart.map((item) => (
+            {enquiryItems.map((item) => (
               <div
                 key={`${item.productId}-${item.variantId}`}
                 className="flex flex-col sm:flex-row gap-4 p-4 border border-[#2C1E16]/10 bg-[#FAF7F2]"
@@ -139,9 +115,6 @@ export const CartPage: React.FC = () => {
                       </button>
                     </div>
 
-                    <span className="text-base font-medium tabular-nums text-[#2C1E16]">
-                      {formatINR(item.unitPrice * item.quantity)}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -157,7 +130,7 @@ export const CartPage: React.FC = () => {
                     className="mt-0.5 accent-[#2C1E16]"
                   />
                   <span>
-                    <strong>Signature Gift Packaging</strong> (+{formatINR(settings.giftWrapFee)})
+                    <strong>Signature Gift Packaging</strong>
                   </span>
                 </label>
                 <textarea
@@ -175,71 +148,11 @@ export const CartPage: React.FC = () => {
           {/* Summary Column */}
           <aside className="lg:col-span-4">
             <div className="p-6 bg-[#F4EFE6]/70 border border-[#2C1E16]/12 space-y-5">
-              <h2 className="font-serif text-2xl text-[#2C1E16]">Order Summary</h2>
+              <h2 className="font-serif text-2xl text-[#2C1E16]">Enquiry Summary</h2>
 
-              <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponInput}
-                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                  placeholder="Coupon (e.g. WELCOME10)"
-                  aria-label="Coupon code"
-                  className="flex-1 bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs uppercase focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 border border-[#2C1E16] text-xs uppercase tracking-wider hover:bg-[#2C1E16] hover:text-[#FAF7F2] cursor-pointer"
-                >
-                  Apply
-                </button>
-              </form>
-              {appliedCoupon && (
-                <div className="flex items-center justify-between text-xs text-[#2C1E16]">
-                  <span>Coupon active: {appliedCoupon.code}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAppliedCoupon(null);
-                      setCouponInput('');
-                    }}
-                    className="underline cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
-
-              <div className="space-y-2 text-sm text-[#6B584C] pt-2 border-t border-[#2C1E16]/10">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span className="tabular-nums text-[#2C1E16]">{formatINR(breakdown.subtotal)}</span>
-                </div>
-                {breakdown.discountAmount > 0 && (
-                  <div className="flex justify-between text-[#2C1E16]">
-                    <span>Discount</span>
-                    <span className="tabular-nums">-{formatINR(breakdown.discountAmount)}</span>
-                  </div>
-                )}
-                {breakdown.giftWrapFee > 0 && (
-                  <div className="flex justify-between">
-                    <span>Gift Packaging</span>
-                    <span className="tabular-nums text-[#2C1E16]">{formatINR(breakdown.giftWrapFee)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span className="tabular-nums text-[#2C1E16]">
-                    To be confirmed
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span>{settings.taxInclusive ? `Includes GST (${settings.gstRatePercent}%)` : `GST (${settings.gstRatePercent}%)`}</span>
-                  <span className="tabular-nums">{formatINR(breakdown.taxAmount)}</span>
-                </div>
-                <div className="flex justify-between pt-3 border-t border-[#2C1E16]/12 text-base font-semibold text-[#2C1E16]">
-                  <span>Total</span>
-                  <span className="tabular-nums">{formatINR(breakdown.totalAmount)}</span>
-                </div>
+              <div className="border-t border-[#2C1E16]/10 pt-4 text-xs leading-relaxed text-[#6B584C]">
+                Product details, availability, final prices, taxes, and delivery charges are confirmed by the concierge.
+                Sending a WhatsApp message is an enquiry only, not a confirmed purchase.
               </div>
 
               <div className="space-y-2.5 pt-2">
@@ -251,12 +164,12 @@ export const CartPage: React.FC = () => {
                     className="w-full inline-flex min-h-11 items-center justify-center gap-2 border border-[#2C1E16]/20 bg-[#FAF7F2] px-4 py-3 text-center text-xs font-medium uppercase tracking-[0.12em] text-[#2C1E16] transition-colors hover:bg-[#F4EFE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352]"
                   >
                     <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                    <span>Order directly · No details needed</span>
+                    <span>Send enquiry on WhatsApp</span>
                   </a>
                 )}
                 {settings.whatsappOrderingEnabled && (
                   <p className="text-center text-[11px] leading-relaxed text-[#6B584C]">
-                    Your bag stays on this device. Product and delivery details are sent only if you choose to send the WhatsApp message.
+                    Your bag stays on this device. Nothing is ordered or shared until you choose to send the WhatsApp enquiry.
                   </p>
                 )}
               </div>

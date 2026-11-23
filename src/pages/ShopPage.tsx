@@ -16,6 +16,7 @@ export const ShopPage: React.FC = () => {
   const [maxPrice, setMaxPrice] = useState<number>(10000);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'featured' | 'popular' | 'latest' | 'price-asc' | 'price-desc'>('featured');
+  const hasApprovedProducts = products.some((product) => !product.isShowcaseDemo);
 
   // Keep synced when URL changes via navbar links
   React.useEffect(() => {
@@ -42,17 +43,25 @@ export const ShopPage: React.FC = () => {
           p.categoryName.toLowerCase().includes(q)
       );
     }
-    if (maxPrice < 10000) {
-      list = list.filter((p) => Math.min(...p.variants.map((v) => v.price)) <= maxPrice);
+    if (hasApprovedProducts && maxPrice < 10000) {
+      list = list.filter(
+        (p) => p.isShowcaseDemo || Math.min(...p.variants.map((v) => v.price)) <= maxPrice
+      );
     }
     if (inStockOnly) {
       list = list.filter((p) => p.variants.some((v) => v.stock > 0));
     }
 
     if (sortBy === 'price-asc') {
-      list.sort((a, b) => Math.min(...a.variants.map((v) => v.price)) - Math.min(...b.variants.map((v) => v.price)));
+      list.sort((a, b) => {
+        if (a.isShowcaseDemo !== b.isShowcaseDemo) return a.isShowcaseDemo ? 1 : -1;
+        return Math.min(...a.variants.map((v) => v.price)) - Math.min(...b.variants.map((v) => v.price));
+      });
     } else if (sortBy === 'price-desc') {
-      list.sort((a, b) => Math.min(...b.variants.map((v) => v.price)) - Math.min(...a.variants.map((v) => v.price)));
+      list.sort((a, b) => {
+        if (a.isShowcaseDemo !== b.isShowcaseDemo) return a.isShowcaseDemo ? 1 : -1;
+        return Math.min(...b.variants.map((v) => v.price)) - Math.min(...a.variants.map((v) => v.price));
+      });
     } else if (sortBy === 'latest') {
       list.sort((a, b) => (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0));
     } else if (sortBy === 'popular') {
@@ -61,7 +70,7 @@ export const ShopPage: React.FC = () => {
       list.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
     }
     return list;
-  }, [products, selectedCategory, searchQuery, maxPrice, inStockOnly, sortBy]);
+  }, [products, selectedCategory, searchQuery, maxPrice, inStockOnly, sortBy, hasApprovedProducts]);
 
   const activeCategoryObj = categories.find((c) => c.slug === selectedCategory || c.id === selectedCategory);
 
@@ -81,7 +90,9 @@ export const ShopPage: React.FC = () => {
         <p className="mt-2 text-sm text-[#6B584C] max-w-2xl">
           {activeCategoryObj
             ? activeCategoryObj.description
-            : 'Filter by fragrance family, availability, or price. Pre-loaded items are marked as Showcase Demo listings until updated with verified inventory.'}
+            : hasApprovedProducts
+              ? 'Explore the ERAMORA collection and contact our concierge to confirm product details and availability.'
+              : 'Pre-loaded entries are showcase concepts for catalogue review, not approved for sale.'}
         </p>
       </div>
 
@@ -121,7 +132,7 @@ export const ShopPage: React.FC = () => {
       </div>
 
       {/* Secondary Controls: Search, Price, Availability, Sort */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-[#F4EFE6]/60 border border-[#2C1E16]/10 p-4 mb-10">
+      <div className={`grid grid-cols-1 ${hasApprovedProducts ? 'md:grid-cols-12' : 'md:grid-cols-7'} gap-4 items-center bg-[#F4EFE6]/60 border border-[#2C1E16]/10 p-4 mb-10`}>
         <div className="md:col-span-4 relative flex items-center">
           <Search className="w-4 h-4 text-[#6B584C] absolute left-3" />
           <input
@@ -134,34 +145,38 @@ export const ShopPage: React.FC = () => {
           />
         </div>
 
-        <div className="md:col-span-3 flex items-center gap-3 text-xs text-[#6B584C]">
-          <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-          <label htmlFor="max-price-filter" className="whitespace-nowrap">
-            Under ₹{maxPrice.toLocaleString('en-IN')}
-          </label>
-          <input
-            id="max-price-filter"
-            type="range"
-            min={1000}
-            max={10000}
-            step={500}
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(Number(e.target.value))}
-            className="w-full accent-[#2C1E16]"
-          />
-        </div>
+        {hasApprovedProducts && (
+          <>
+            <div className="md:col-span-3 flex items-center gap-3 text-xs text-[#6B584C]">
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+              <label htmlFor="max-price-filter" className="whitespace-nowrap">
+                Under ₹{maxPrice.toLocaleString('en-IN')}
+              </label>
+              <input
+                id="max-price-filter"
+                type="range"
+                min={1000}
+                max={10000}
+                step={500}
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(Number(e.target.value))}
+                className="w-full accent-[#2C1E16]"
+              />
+            </div>
 
-        <div className="md:col-span-2">
-          <label className="inline-flex items-center gap-2 text-xs text-[#2C1E16] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={inStockOnly}
-              onChange={(e) => setInStockOnly(e.target.checked)}
-              className="accent-[#2C1E16]"
-            />
-            <span>In Stock Only</span>
-          </label>
-        </div>
+            <div className="md:col-span-2">
+              <label className="inline-flex items-center gap-2 text-xs text-[#2C1E16] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inStockOnly}
+                  onChange={(e) => setInStockOnly(e.target.checked)}
+                  className="accent-[#2C1E16]"
+                />
+                <span>In Stock Only</span>
+              </label>
+            </div>
+          </>
+        )}
 
         <div className="md:col-span-3 flex items-center justify-end gap-2">
           <label htmlFor="shop-sort" className="text-xs text-[#6B584C] whitespace-nowrap">
@@ -176,8 +191,12 @@ export const ShopPage: React.FC = () => {
             <option value="featured">Curated Featured</option>
             <option value="popular">Most Popular</option>
             <option value="latest">Latest Arrivals</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
+            {hasApprovedProducts && (
+              <>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </>
+            )}
           </select>
         </div>
       </div>

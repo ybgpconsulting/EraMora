@@ -14,32 +14,15 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
-import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { formatINR } from '../utils/commerce';
 import type {
   BannerConfig,
   BusinessSettings,
   Category,
-  Coupon,
-  CustomerEnquiry,
-  Order,
-  OrderStatus,
-  PaymentStatus,
   Product,
 } from '../types/store';
 
-type AdminTab = 'overview' | 'products' | 'announcement' | 'orders' | 'customers' | 'marketing' | 'settings';
-
-interface OverviewData {
-  totalOrders: number;
-  totalRevenue: number;
-  todaySales: number;
-  monthlySales: number;
-  totalCustomers: number;
-  statusCounts: Record<string, number>;
-  bestsellingProducts: Array<{ productId: string; name: string; units: number; revenue: number }>;
-  lowStockProducts: Array<{ productId: string; productName: string; variantLabel: string; stock: number; sku: string }>;
-}
+type AdminTab = 'products' | 'announcement' | 'banners' | 'settings';
 
 export const AdminDashboardPage: React.FC = () => {
   const { user, login, logout, navigate, refreshCatalog, refreshConfig, categories, notify } = useStore();
@@ -52,25 +35,10 @@ export const AdminDashboardPage: React.FC = () => {
   const [loggingIn, setLoggingIn] = useState(false);
 
   const [tab, setTab] = useState<AdminTab>('products');
-  const [overview, setOverview] = useState<OverviewData | null>(null);
   const [adminProducts, setAdminProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('');
   const [productStatusFilter, setProductStatusFilter] = useState('all');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [savingOrderIds, setSavingOrderIds] = useState<Set<string>>(() => new Set());
-  const [orderSearch, setOrderSearch] = useState('');
-  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
-
-  const [customersData, setCustomersData] = useState<{
-    customers: Array<{ id: string; name: string; email: string; mobile: string; ordersCount: number; totalSpent: number }>;
-    enquiries: CustomerEnquiry[];
-  }>({ customers: [], enquiries: [] });
-
-  const [marketingData, setMarketingData] = useState<{
-    coupons: Coupon[];
-    banners: BannerConfig | null;
-  }>({ coupons: [], banners: null });
 
   const [settingsForm, setSettingsForm] = useState<BusinessSettings | null>(null);
   const [bannersForm, setBannersForm] = useState<BannerConfig | null>(null);
@@ -79,7 +47,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newProductOpen, setNewProductOpen] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const defaultProductImage = '/src/assets/images/product_candle_oud_velvet_1794827351032.jpg';
+  const defaultProductImage = '/brand/eramora/campaigns/fragrance-art.jpg';
   const [prodForm, setProdForm] = useState({
     name: '',
     subtitle: '',
@@ -131,59 +99,18 @@ export const AdminDashboardPage: React.FC = () => {
     });
   }, [adminProducts, deferredProductSearch, productCategoryFilter, productStatusFilter]);
 
-  // WhatsApp Order Recorder
-  const [waOrderOpen, setWaOrderOpen] = useState(false);
-  const [waOrderForm, setWaOrderForm] = useState({
-    customerName: '',
-    mobile: '',
-    email: '',
-    houseFlat: '',
-    street: '',
-    landmark: '',
-    city: '',
-    state: '',
-    pincode: '',
-    productId: '',
-    variantId: '',
-    quantity: 1,
-    paymentStatus: 'awaiting_verification' as PaymentStatus,
-    giftWrapSelected: false,
-    giftMessage: '',
-    notes: '',
-  });
-  const [waOrderAdditionalItems, setWaOrderAdditionalItems] = useState<
-    Array<{ productId: string; variantId: string; quantity: number }>
-  >([]);
-
-  // Coupon creator
-  const [couponForm, setCouponForm] = useState({
-    code: '',
-    description: '',
-    discountType: 'percentage' as 'percentage' | 'flat',
-    discountValue: 10,
-    minOrderAmount: 1000,
-  });
-
   const loadAdminData = useCallback(async () => {
     if (!user || user.role !== 'admin') return;
     try {
-      const [prodRes, mktRes, cfgRes] = await Promise.all([
-        fetch('/api/admin/products'),
-        fetch('/api/admin/marketing'),
-        fetch('/api/config/public'),
-      ]);
+      const [prodRes, cfgRes] = await Promise.all([fetch('/api/admin/products'), fetch('/api/config/public')]);
       if (prodRes.ok) {
         const prods = (await prodRes.json()) as Product[];
         setAdminProducts(prods);
       }
-      if (mktRes.ok) {
-        const mkt = await mktRes.json();
-        setMarketingData(mkt);
-        if (mkt.banners) setBannersForm(mkt.banners as BannerConfig);
-      }
       if (cfgRes.ok) {
         const cfg = await cfgRes.json();
         setSettingsForm(cfg.settings as BusinessSettings);
+        setBannersForm(cfg.banners as BannerConfig);
       }
     } catch {
       notify('Could not refresh admin data.', 'error');
@@ -420,85 +347,6 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleUpdateOrder = async (orderId: string, patch: Partial<Order>) => {
-    if (savingOrderIds.has(orderId)) return;
-    setSavingOrderIds((current) => new Set(current).add(orderId));
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      const payload = (await res.json()) as Order | { error?: string };
-      if (!res.ok) {
-        throw new Error('error' in payload ? payload.error || 'Could not update order.' : 'Could not update order.');
-      }
-      if (!('id' in payload) || payload.id !== orderId) {
-        throw new Error('The server did not confirm the order update.');
-      }
-      setOrders((current) => {
-        const updatedOrders = current.map((order) => (order.id === orderId ? payload : order));
-        return orderStatusFilter !== 'all' && payload.orderStatus !== orderStatusFilter
-          ? updatedOrders.filter((order) => order.id !== orderId)
-          : updatedOrders;
-      });
-      notify('Order updated.', 'success');
-    } catch (err) {
-      notify((err as Error).message || 'Could not update order. Check your connection and try again.', 'error');
-    } finally {
-      setSavingOrderIds((current) => {
-        const next = new Set(current);
-        next.delete(orderId);
-        return next;
-      });
-    }
-  };
-
-  const handleCreateWhatsAppOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/admin/orders/whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...waOrderForm,
-        items: [
-          {
-            productId: waOrderForm.productId,
-            variantId: waOrderForm.variantId,
-            quantity: waOrderForm.quantity,
-          },
-          ...waOrderAdditionalItems,
-        ],
-      }),
-    });
-    if (res.ok) {
-      notify('WhatsApp order recorded.', 'success');
-      setWaOrderOpen(false);
-      setWaOrderForm((form) => ({
-        ...form,
-        customerName: '',
-        mobile: '',
-        email: '',
-        houseFlat: '',
-        street: '',
-        landmark: '',
-        city: '',
-        state: '',
-        pincode: '',
-        quantity: 1,
-        paymentStatus: 'awaiting_verification',
-        giftWrapSelected: false,
-        giftMessage: '',
-        notes: '',
-      }));
-      setWaOrderAdditionalItems([]);
-      void loadAdminData();
-    } else {
-      const err = (await res.json()) as { error?: string };
-      notify(err.error || 'Could not record order.', 'error');
-    }
-  };
-
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!settingsForm) return;
@@ -572,7 +420,7 @@ export const AdminDashboardPage: React.FC = () => {
           [
             ['products', 'Products'],
             ['announcement', 'Announcement'],
-            ['marketing', 'Marketing'],
+            ['banners', 'Banners'],
             ['settings', 'Settings'],
           ] as Array<[AdminTab, string]>
         ).map(([key, label]) => (
@@ -645,93 +493,6 @@ export const AdminDashboardPage: React.FC = () => {
               Announcement settings are unavailable. Refresh the admin data and try again.
             </p>
           )}
-        </div>
-      )}
-
-      {/* OVERVIEW TAB */}
-      {tab === 'overview' && overview && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              ['Total Revenue', formatINR(overview.totalRevenue)],
-              ['Monthly Sales', formatINR(overview.monthlySales)],
-              ["Today's Sales", formatINR(overview.todaySales)],
-              ['Total Orders', String(overview.totalOrders)],
-              ['Customers', String(overview.totalCustomers)],
-            ].map(([label, val]) => (
-              <div key={label} className="p-4 bg-[#F4EFE6]/70 border border-[#2C1E16]/10">
-                <p className="text-[11px] uppercase tracking-wider text-[#6B584C]">{label}</p>
-                <p className="mt-1.5 font-sans font-semibold text-2xl text-[#2C1E16] tabular-nums">{val}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            {[
-              ['Pending', overview.statusCounts.pending],
-              ['Processing', overview.statusCounts.processing],
-              ['Shipped', overview.statusCounts.shipped],
-              ['Delivered', overview.statusCounts.delivered],
-              ['Cancelled', overview.statusCounts.cancelled],
-              ['Returns', overview.statusCounts.return_requested],
-            ].map(([label, count]) => (
-              <div key={String(label)} className="p-3 bg-[#FAF7F2] border border-[#2C1E16]/10 flex justify-between items-center text-xs">
-                <span className="text-[#6B584C]">{label}</span>
-                <span className="font-semibold tabular-nums text-[#2C1E16]">{count}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="p-5 border border-[#2C1E16]/12 bg-[#FAF7F2]">
-              <h2 className="font-serif text-xl text-[#2C1E16] mb-3">Bestselling Products</h2>
-              {overview.bestsellingProducts.length === 0 ? (
-                <p className="text-xs text-[#6B584C]">No sales recorded yet.</p>
-              ) : (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-[#2C1E16]/10 text-[#6B584C] text-left">
-                      <th className="py-2 font-medium">Product</th>
-                      <th className="py-2 font-medium text-right">Units</th>
-                      <th className="py-2 font-medium text-right">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#2C1E16]/8">
-                    {overview.bestsellingProducts.map((b) => (
-                      <tr key={b.productId}>
-                        <td className="py-2.5 text-[#2C1E16]">{b.name}</td>
-                        <td className="py-2.5 text-right tabular-nums">{b.units}</td>
-                        <td className="py-2.5 text-right tabular-nums font-medium">{formatINR(b.revenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="p-5 border border-[#2C1E16]/12 bg-[#FAF7F2]">
-              <h2 className="font-serif text-xl text-[#2C1E16] mb-3">Low-Stock Alerts</h2>
-              {overview.lowStockProducts.length === 0 ? (
-                <p className="text-xs text-[#6B584C]">All active variants are adequately stocked.</p>
-              ) : (
-                <ul className="divide-y divide-[#2C1E16]/8 text-xs">
-                  {overview.lowStockProducts.map((item) => (
-                    <li key={item.sku} className="py-2.5 flex items-center justify-between gap-2">
-                      <div>
-                        <span className="text-[#2C1E16] font-medium">{item.productName}</span>
-                        <span className="text-[#6B584C] block">
-                          {item.variantLabel} · {item.sku}
-                        </span>
-                      </div>
-                      <span className={`tabular-nums font-semibold ${item.stock === 0 ? 'text-[#8C2F27]' : 'text-[#B89352]'}`}>
-                        {item.stock} left
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -1318,583 +1079,41 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* ORDERS & WHATSAPP RECORDER TAB */}
-      {tab === 'orders' && (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="search"
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value)}
-                placeholder="Search order #, name, phone..."
-                className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-              />
-              <select
-                value={orderStatusFilter}
-                onChange={(e) => setOrderStatusFilter(e.target.value)}
-                className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-              >
-                <option value="all">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="shipped">Shipped</option>
-                <option value="delivered">Delivered</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="return_requested">Return Requested</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setWaOrderOpen((v) => !v)}
-              className="inline-flex items-center gap-2 bg-[#2C1E16] text-[#FAF7F2] px-4 py-2.5 text-xs uppercase tracking-wider cursor-pointer"
-            >
-              <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
-              <span>{waOrderOpen ? 'Close Recorder' : 'Record WhatsApp Order'}</span>
-            </button>
-          </div>
-
-          {waOrderOpen && (
-            <form onSubmit={handleCreateWhatsAppOrder} className="p-5 bg-[#F4EFE6]/70 border border-[#2C1E16]/15 space-y-3">
-              <h3 className="font-serif text-xl text-[#2C1E16]">Record Confirmed WhatsApp-Assisted Order</h3>
-              <p className="text-xs leading-relaxed text-[#6B584C]">
-                Enter the confirmed delivery address and selected product variant. Shipping and payment updates can
-                be added to the order after it is saved.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <input
-                  type="text"
-                  required
-                  autoComplete="name"
-                  value={waOrderForm.customerName}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, customerName: e.target.value })}
-                  placeholder="Customer name *"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="tel"
-                  required
-                  autoComplete="tel"
-                  value={waOrderForm.mobile}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, mobile: e.target.value })}
-                  placeholder="Mobile number *"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={waOrderForm.email}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, email: e.target.value })}
-                  placeholder="Email (optional)"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  required
-                  autoComplete="address-line1"
-                  value={waOrderForm.houseFlat}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, houseFlat: e.target.value })}
-                  placeholder="House / flat / building *"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  required
-                  autoComplete="address-line2"
-                  value={waOrderForm.street}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, street: e.target.value })}
-                  placeholder="Street / area *"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  value={waOrderForm.landmark}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, landmark: e.target.value })}
-                  placeholder="Landmark (optional)"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  required
-                  value={waOrderForm.city}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, city: e.target.value })}
-                  placeholder="City *"
-                  autoComplete="address-level2"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  required
-                  value={waOrderForm.state}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, state: e.target.value })}
-                  placeholder="State *"
-                  autoComplete="address-level1"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  required
-                  inputMode="numeric"
-                  maxLength={6}
-                  autoComplete="postal-code"
-                  value={waOrderForm.pincode}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, pincode: e.target.value.replace(/\D/g, '') })}
-                  placeholder="6-digit pincode *"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <select
-                  required
-                  value={waOrderForm.productId}
-                  onChange={(e) => {
-                    const p = adminProducts.find((pr) => pr.id === e.target.value);
-                    setWaOrderForm({
-                      ...waOrderForm,
-                      productId: e.target.value,
-                      variantId: p?.variants.find((variant) => variant.stock > 0)?.id || '',
-                    });
-                  }}
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                >
-                  <option value="" disabled>Select a product *</option>
-                  {adminProducts
-                    .filter((product) => !product.isArchived && product.variants.some((variant) => variant.stock > 0))
-                    .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                    ))}
-                </select>
-                <select
-                  required
-                  value={waOrderForm.variantId}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, variantId: e.target.value })}
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                >
-                  {adminProducts
-                    .find((product) => product.id === waOrderForm.productId)
-                    ?.variants.filter((variant) => variant.stock > 0).map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.label} · {formatINR(variant.price)} · {variant.stock} in stock
-                      </option>
-                    ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  required
-                  value={waOrderForm.quantity}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, quantity: Number(e.target.value) })}
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <select
-                  value={waOrderForm.paymentStatus}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, paymentStatus: e.target.value as PaymentStatus })}
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                >
-                  <option value="awaiting_verification">Awaiting Payment Verification</option>
-                  <option value="paid">Paid (UPI / Transfer Verified)</option>
-                </select>
-                <label className="inline-flex items-center gap-2 text-xs text-[#2C1E16]">
-                  <input
-                    type="checkbox"
-                    checked={waOrderForm.giftWrapSelected}
-                    onChange={(e) => setWaOrderForm({ ...waOrderForm, giftWrapSelected: e.target.checked })}
-                  />
-                  Add signature gift packaging
-                </label>
-                <input
-                  type="text"
-                  value={waOrderForm.giftMessage}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, giftMessage: e.target.value })}
-                  placeholder="Gift message (optional)"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-                <input
-                  type="text"
-                  value={waOrderForm.notes}
-                  onChange={(e) => setWaOrderForm({ ...waOrderForm, notes: e.target.value })}
-                  placeholder="Internal order notes (optional)"
-                  className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                />
-              </div>
-              {waOrderAdditionalItems.map((item, index) => {
-                const selectedProduct = adminProducts.find((product) => product.id === item.productId);
-                const updateItem = (patch: Partial<typeof item>) => {
-                  setWaOrderAdditionalItems((items) =>
-                    items.map((current, currentIndex) =>
-                      currentIndex === index ? { ...current, ...patch } : current
-                    )
-                  );
-                };
-
-                return (
-                  <div key={index} className="grid grid-cols-1 sm:grid-cols-4 gap-3 border-t border-[#2C1E16]/10 pt-3">
-                    <select
-                      required
-                      aria-label={`Additional product ${index + 1}`}
-                      value={item.productId}
-                      onChange={(e) => {
-                        const product = adminProducts.find((candidate) => candidate.id === e.target.value);
-                        updateItem({
-                          productId: e.target.value,
-                          variantId: product?.variants.find((variant) => variant.stock > 0)?.id || '',
-                        });
-                      }}
-                      className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                    >
-                      {adminProducts
-                        .filter(
-                          (product) => !product.isArchived && product.variants.some((variant) => variant.stock > 0)
-                        )
-                        .map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.name}
-                          </option>
-                        ))}
-                    </select>
-                    <select
-                      required
-                      aria-label={`Additional variant ${index + 1}`}
-                      value={item.variantId}
-                      onChange={(e) => updateItem({ variantId: e.target.value })}
-                      className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                    >
-                      {selectedProduct?.variants
-                        .filter((variant) => variant.stock > 0)
-                        .map((variant) => (
-                          <option key={variant.id} value={variant.id}>
-                            {variant.label} · {formatINR(variant.price)} · {variant.stock} in stock
-                          </option>
-                        ))}
-                    </select>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      required
-                      aria-label={`Quantity for additional product ${index + 1}`}
-                      value={item.quantity}
-                      onChange={(e) => updateItem({ quantity: Number(e.target.value) })}
-                      className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setWaOrderAdditionalItems((items) => items.filter((_, currentIndex) => currentIndex !== index))
-                      }
-                      className="text-left text-xs text-[#8C2F27] underline underline-offset-2"
-                    >
-                      Remove item
-                    </button>
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                disabled={!adminProducts.some((product) => !product.isArchived && product.variants.some((variant) => variant.stock > 0))}
-                onClick={() => {
-                  const firstAvailable = adminProducts.find(
-                    (product) => !product.isArchived && product.variants.some((variant) => variant.stock > 0)
-                  );
-                  if (!firstAvailable) return;
-                  setWaOrderAdditionalItems((items) => [
-                    ...items,
-                    {
-                      productId: firstAvailable.id,
-                      variantId: firstAvailable.variants.find((variant) => variant.stock > 0)?.id || '',
-                      quantity: 1,
-                    },
-                  ]);
-                }}
-                className="inline-flex items-center gap-1.5 border border-[#2C1E16]/20 px-3 py-2 text-xs text-[#2C1E16] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                Add another product
-              </button>
-              <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-5 py-2 text-xs uppercase cursor-pointer">
-                Save WhatsApp Order
-              </button>
-            </form>
-          )}
-
-          <div className="space-y-3">
-            {orders.map((ord) => (
-              <div
-                key={ord.id}
-                aria-busy={savingOrderIds.has(ord.id)}
-                className="p-4 border border-[#2C1E16]/12 bg-[#FAF7F2] space-y-3"
-              >
-                {savingOrderIds.has(ord.id) && (
-                  <p role="status" className="text-[11px] text-[#8A6A32]">
-                    Saving order changes…
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div>
-                    <strong className="font-serif text-lg text-[#2C1E16]">#{ord.orderNumber}</strong>
-                    <span className="ml-2 uppercase tracking-wider text-[#B89352]">{ord.channel}</span>
-                    <span className="ml-2 text-[#6B584C]">
-                      {ord.address.fullName} · {ord.address.mobile}
-                    </span>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[#6B584C]">
-                      {[ord.address.houseFlat, ord.address.street, ord.address.landmark, ord.address.city, ord.address.state]
-                        .filter(Boolean)
-                        .join(', ')}{' '}
-                      {ord.address.pincode}
-                      {ord.address.email ? ` · ${ord.address.email}` : ''}
-                    </p>
-                  </div>
-                  <span className="font-semibold text-sm tabular-nums text-[#2C1E16]">{formatINR(ord.totalAmount)}</span>
-                </div>
-
-                <div className="text-xs text-[#6B584C]">
-                  {ord.items.map((it) => `${it.productName} (${it.variantLabel}) × ${it.quantity}`).join(' · ')}
-                  {ord.returnReason && <span className="block text-[#8C2F27] mt-1">Return Reason: {ord.returnReason}</span>}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t border-[#2C1E16]/8 text-xs">
-                  <select
-                    aria-label={`Order status for ${ord.orderNumber}`}
-                    value={ord.orderStatus}
-                    disabled={savingOrderIds.has(ord.id)}
-                    onChange={(e) => void handleUpdateOrder(ord.id, { orderStatus: e.target.value as OrderStatus })}
-                    className="bg-[#F4EFE6] border border-[#2C1E16]/15 px-2.5 py-1.5 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="return_requested">Return Requested</option>
-                    <option value="refunded">Refunded</option>
-                  </select>
-
-                  <select
-                    aria-label={`Payment status for ${ord.orderNumber}`}
-                    value={ord.paymentStatus}
-                    disabled={savingOrderIds.has(ord.id)}
-                    onChange={(e) => void handleUpdateOrder(ord.id, { paymentStatus: e.target.value as PaymentStatus })}
-                    className="bg-[#F4EFE6] border border-[#2C1E16]/15 px-2.5 py-1.5 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <option value="pending">Payment Pending</option>
-                    <option value="awaiting_verification">Awaiting Verification</option>
-                    <option value="paid">Paid</option>
-                    <option value="failed">Failed</option>
-                    <option value="refunded">Refunded</option>
-                  </select>
-
-                  <input
-                    type="text"
-                    defaultValue={ord.courierName || ''}
-                    disabled={savingOrderIds.has(ord.id)}
-                    onBlur={(e) => {
-                      if (e.target.value !== (ord.courierName || '')) {
-                        void handleUpdateOrder(ord.id, { courierName: e.target.value });
-                      }
-                    }}
-                    placeholder="Courier (e.g. BlueDart)"
-                    className="bg-[#FAF7F2] border border-[#2C1E16]/15 px-2.5 py-1.5 disabled:cursor-wait disabled:opacity-60"
-                  />
-
-                  <input
-                    type="text"
-                    defaultValue={ord.trackingNumber || ''}
-                    disabled={savingOrderIds.has(ord.id)}
-                    onBlur={(e) => {
-                      if (e.target.value !== (ord.trackingNumber || '')) {
-                        void handleUpdateOrder(ord.id, { trackingNumber: e.target.value });
-                      }
-                    }}
-                    placeholder="Tracking Waybill #"
-                    className="bg-[#FAF7F2] border border-[#2C1E16]/15 px-2.5 py-1.5 disabled:cursor-wait disabled:opacity-60"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* CUSTOMERS & ENQUIRIES TAB */}
-      {tab === 'customers' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <h2 className="font-serif text-2xl text-[#2C1E16]">
-              WhatsApp Order Customers ({customersData.customers.length})
-            </h2>
-            <div className="divide-y divide-[#2C1E16]/10 border border-[#2C1E16]/12 bg-[#FAF7F2]">
-              {customersData.customers.map((c) => (
-                <div key={c.id} className="p-4 flex justify-between items-center text-xs">
-                  <div>
-                    <p className="font-medium text-[#2C1E16] text-sm">{c.name}</p>
-                    <p className="text-[#6B584C]">
-                      {c.email} · {c.mobile}
-                    </p>
-                  </div>
-                  <div className="text-right tabular-nums">
-                    <p className="font-semibold text-[#2C1E16]">{formatINR(c.totalSpent)}</p>
-                    <p className="text-[#6B584C]">{c.ordersCount} orders</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h2 className="font-serif text-2xl text-[#2C1E16]">Enquiries & Restock Requests ({customersData.enquiries.length})</h2>
-            <div className="space-y-3">
-              {customersData.enquiries.map((enq) => (
-                <div key={enq.id} className="p-4 border border-[#2C1E16]/12 bg-[#FAF7F2] space-y-2 text-xs">
-                  <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <span className="uppercase tracking-wider text-[#B89352]">{enq.type.replace('_', ' ')}</span>
-                      <p className="font-medium text-sm text-[#2C1E16]">{enq.subject}</p>
-                      <p className="text-[#6B584C]">
-                        {enq.name} · {enq.email} {enq.mobile ? `· ${enq.mobile}` : ''}
-                      </p>
-                    </div>
-                    <select
-                      value={enq.status}
-                      onChange={async (e) => {
-                        await fetch(`/api/admin/enquiries/${enq.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ status: e.target.value }),
-                        });
-                        void loadAdminData();
-                      }}
-                      className="bg-[#F4EFE6] border border-[#2C1E16]/15 px-2 py-1"
-                    >
-                      <option value="open">Open</option>
-                      <option value="responded">Responded</option>
-                      <option value="closed">Closed</option>
-                    </select>
-                  </div>
-                  <p className="text-[#6B584C]">{enq.message}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MARKETING TAB */}
-      {tab === 'marketing' && (
+      {tab === 'banners' && bannersForm && (
         <div className="space-y-8">
-          {/* Coupons */}
-          <div className="p-5 border border-[#2C1E16]/12 bg-[#FAF7F2] space-y-4">
-            <h2 className="font-serif text-2xl text-[#2C1E16]">Coupons & Offers</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {marketingData.coupons.map((c) => (
-                <div key={c.id} className="p-3.5 bg-[#F4EFE6]/70 border border-[#2C1E16]/10 flex justify-between items-start text-xs">
-                  <div>
-                    <strong className="text-sm text-[#2C1E16]">{c.code}</strong>
-                    <p className="text-[#6B584C] mt-0.5">{c.description}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await fetch(`/api/admin/coupons/${c.id}`, { method: 'DELETE' });
-                      void loadAdminData();
-                    }}
-                    className="text-[#6B584C] hover:text-[#8C2F27] cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                await fetch('/api/admin/coupons', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(couponForm),
-                });
-                setCouponForm({ code: '', description: '', discountType: 'percentage', discountValue: 10, minOrderAmount: 1000 });
-                void loadAdminData();
-                notify('Coupon created.', 'success');
-              }}
-              className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2"
-            >
-              <input
-                type="text"
-                required
-                value={couponForm.code}
-                onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-                placeholder="CODE"
-                className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs uppercase"
-              />
-              <select
-                value={couponForm.discountType}
-                onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value as 'percentage' | 'flat' })}
-                className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-              >
-                <option value="percentage">% Off</option>
-                <option value="flat">Flat ₹ Off</option>
-              </select>
-              <input
-                type="number"
-                value={couponForm.discountValue}
-                onChange={(e) => setCouponForm({ ...couponForm, discountValue: Number(e.target.value) })}
-                placeholder="Value"
-                className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-              />
-              <input
-                type="number"
-                value={couponForm.minOrderAmount}
-                onChange={(e) => setCouponForm({ ...couponForm, minOrderAmount: Number(e.target.value) })}
-                placeholder="Min ₹"
-                className="bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-xs"
-              />
-              <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-4 py-2 text-xs uppercase cursor-pointer">
-                Create Coupon
-              </button>
-            </form>
-          </div>
-
-          {/* Banners */}
-          {bannersForm && (
-            <form onSubmit={handleSaveBanners} className="p-5 border border-[#2C1E16]/12 bg-[#FAF7F2] space-y-3">
-              <h2 className="font-serif text-2xl text-[#2C1E16]">Homepage Banners & Copy</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-[#6B584C] mb-1">Hero Headline</label>
-                  <input
-                    type="text"
-                    value={bannersForm.heroHeadline}
-                    onChange={(e) => setBannersForm({ ...bannersForm, heroHeadline: e.target.value })}
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[#6B584C] mb-1">Campaign Title</label>
-                  <input
-                    type="text"
-                    value={bannersForm.campaignTitle}
-                    onChange={(e) => setBannersForm({ ...bannersForm, campaignTitle: e.target.value })}
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2"
-                  />
-                </div>
+          <form onSubmit={handleSaveBanners} className="p-5 border border-[#2C1E16]/12 bg-[#FAF7F2] space-y-3">
+            <h2 className="font-serif text-2xl text-[#2C1E16]">Homepage Banners & Copy</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block text-[#6B584C] mb-1">Hero Headline</label>
+                <input
+                  type="text"
+                  value={bannersForm.heroHeadline}
+                  onChange={(e) => setBannersForm({ ...bannersForm, heroHeadline: e.target.value })}
+                  className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2"
+                />
               </div>
-              <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-5 py-2 text-xs uppercase cursor-pointer">
-                Save Banners
-              </button>
-            </form>
-          )}
-
+              <div className="md:col-span-2">
+                <label className="block text-[#6B584C] mb-1">Campaign Title</label>
+                <input
+                  type="text"
+                  value={bannersForm.campaignTitle}
+                  onChange={(e) => setBannersForm({ ...bannersForm, campaignTitle: e.target.value })}
+                  className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2"
+                />
+              </div>
+            </div>
+            <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-5 py-2 text-xs uppercase cursor-pointer">
+              Save Banners
+            </button>
+          </form>
         </div>
       )}
 
       {/* BUSINESS SETTINGS TAB */}
       {tab === 'settings' && settingsForm && (
         <form onSubmit={handleSaveSettings} className="p-6 border border-[#2C1E16]/12 bg-[#FAF7F2] space-y-6">
-          <h2 className="font-serif text-2xl text-[#2C1E16]">Business, WhatsApp, Shipping & Policy Settings</h2>
+          <h2 className="font-serif text-2xl text-[#2C1E16]">Business & Contact Settings</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div>
@@ -1927,33 +1146,6 @@ export const AdminDashboardPage: React.FC = () => {
                 className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2"
               />
             </div>
-            <div>
-              <label className="block text-[#6B584C] mb-1">Free Shipping Threshold (₹)</label>
-              <input
-                type="number"
-                value={settingsForm.freeShippingThreshold}
-                onChange={(e) => setSettingsForm({ ...settingsForm, freeShippingThreshold: Number(e.target.value) })}
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 tabular-nums"
-              />
-            </div>
-            <div>
-              <label className="block text-[#6B584C] mb-1">Standard Shipping Fee (₹)</label>
-              <input
-                type="number"
-                value={settingsForm.standardShippingFee}
-                onChange={(e) => setSettingsForm({ ...settingsForm, standardShippingFee: Number(e.target.value) })}
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 tabular-nums"
-              />
-            </div>
-            <div>
-              <label className="block text-[#6B584C] mb-1">GST Rate (%)</label>
-              <input
-                type="number"
-                value={settingsForm.gstRatePercent}
-                onChange={(e) => setSettingsForm({ ...settingsForm, gstRatePercent: Number(e.target.value) })}
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 tabular-nums"
-              />
-            </div>
           </div>
 
           <div className="flex flex-wrap gap-6 text-xs">
@@ -1967,39 +1159,8 @@ export const AdminDashboardPage: React.FC = () => {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block text-[#6B584C] mb-1">Shipping Policy</label>
-              <textarea
-                rows={3}
-                value={settingsForm.policies.shipping}
-                onChange={(e) =>
-                  setSettingsForm({
-                    ...settingsForm,
-                    policies: { ...settingsForm.policies, shipping: e.target.value },
-                  })
-                }
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 p-2.5"
-              />
-            </div>
-            <div>
-              <label className="block text-[#6B584C] mb-1">Returns & Refund Policy</label>
-              <textarea
-                rows={3}
-                value={settingsForm.policies.returns}
-                onChange={(e) =>
-                  setSettingsForm({
-                    ...settingsForm,
-                    policies: { ...settingsForm.policies, returns: e.target.value },
-                  })
-                }
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 p-2.5"
-              />
-            </div>
-          </div>
-
           <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-6 py-3 text-xs uppercase tracking-widest cursor-pointer">
-            Save All Business Settings
+            Save Contact Settings
           </button>
         </form>
       )}

@@ -4,6 +4,7 @@ import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { YbgpProjectInquiryCard } from '../components/YbgpBrandingCta';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
+import { GRIEVANCE_CONTACT, LEGAL_POLICIES, type LegalPolicyKind } from '../content/policies';
 import { buildGeneralWhatsAppUrl } from '../utils/commerce';
 
 export const AboutPage: React.FC = () => {
@@ -166,8 +167,8 @@ export const ContactPage: React.FC = () => {
 export const FaqPage: React.FC = () => {
   const faqs = [
     {
-      q: 'How does WhatsApp ordering work at ERAMORA?',
-      a: 'You can click "Order on WhatsApp" on any product page or from your Shopping Bag to send a pre-filled, itemized enquiry to our concierge. WhatsApp enquiries remain pending until our team confirms availability and shares payment steps.',
+      q: 'How do WhatsApp enquiries work at ERAMORA?',
+      a: 'You can send a product or bag enquiry to our concierge through WhatsApp. The team will confirm product details, availability, pricing, delivery, and payment steps directly. Sending a message does not place or confirm a purchase.',
     },
     {
       q: 'Which Indian cities do you deliver to?',
@@ -179,7 +180,7 @@ export const FaqPage: React.FC = () => {
     },
     {
       q: 'Do you offer custom gift wrapping and personal notes?',
-      a: 'Yes. Select gift packaging and add a handwritten gift card message in your Shopping Bag before sending your booking to our WhatsApp concierge.',
+      a: 'You can request gift packaging and add a gift card message in your Shopping Bag before sending your enquiry to our WhatsApp concierge. The concierge will confirm what is available.',
     },
   ];
 
@@ -220,10 +221,7 @@ export const FaqPage: React.FC = () => {
   );
 };
 
-export const PolicyPage: React.FC<{ kind: 'shipping' | 'returns' | 'privacy' | 'terms' }> = ({ kind }) => {
-  const { settings } = useStore();
-  const privacyPolicy =
-    'ERAMORA does not maintain website customer accounts or website customer, order, payment, delivery-address or enquiry records. Shopping bag, wishlist, recently viewed products and gift preferences may be stored locally in your browser. If you voluntarily contact ERAMORA through WhatsApp, the information you enter is handled by WhatsApp and by ERAMORA for that conversation. Cloudflare infrastructure may collect technical security and diagnostic logs as described in its services. This implementation does not intentionally set analytics or advertising cookies unless separately disclosed.';
+export const PolicyPage: React.FC<{ kind: LegalPolicyKind }> = ({ kind }) => {
   const titles = {
     shipping: 'Shipping Policy',
     returns: 'Returns & Refund Policy',
@@ -240,8 +238,58 @@ export const PolicyPage: React.FC<{ kind: 'shipping' | 'returns' | 'privacy' | '
       <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">ERAMORA Store Policies</p>
       <h1 className="font-serif text-4xl text-[#2C1E16] border-b border-[#2C1E16]/12 pb-6">{titles[kind]}</h1>
       <div className="text-sm text-[#6B584C] leading-relaxed whitespace-pre-line">
-        {kind === 'privacy' ? privacyPolicy : settings.policies[kind]}
+        {LEGAL_POLICIES[kind]}
       </div>
     </div>
   );
 };
+
+export const GrievancePage: React.FC = () => (
+  <div className="max-w-3xl mx-auto px-4 md:px-8 py-12 md:py-16 space-y-6">
+    <SeoHead
+      title="Grievance Redressal | ERAMORA"
+      description="Contact ERAMORA's grievance officer for assistance with a complaint."
+      canonicalPath="/grievance-redressal"
+    />
+    <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">Customer Assistance</p>
+    <h1 className="font-serif text-4xl text-[#2C1E16] border-b border-[#2C1E16]/12 pb-6">
+      Grievance Redressal
+    </h1>
+    <p className="text-sm text-[#6B584C] leading-relaxed">
+      For a grievance related to ERAMORA or a confirmed transaction, contact the grievance officer using the details
+      below.
+    </p>
+    <dl className="divide-y divide-[#2C1E16]/10 border-y border-[#2C1E16]/10 text-sm">
+      <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
+        <dt className="text-[#6B584C]">Operator</dt>
+        <dd className="text-[#2C1E16]">{GRIEVANCE_CONTACT.operatorName}</dd>
+      </div>
+      <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
+        <dt className="text-[#6B584C]">Business address</dt>
+        <dd className="text-[#2C1E16]">{GRIEVANCE_CONTACT.address}</dd>
+      </div>
+      <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
+        <dt className="text-[#6B584C]">Grievance officer</dt>
+        <dd className="text-[#2C1E16]">
+          {GRIEVANCE_CONTACT.officerName}, {GRIEVANCE_CONTACT.officerDesignation}
+        </dd>
+      </div>
+      <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
+        <dt className="text-[#6B584C]">Email</dt>
+        <dd>
+          <a className="text-[#2C1E16] underline underline-offset-4" href={`mailto:${GRIEVANCE_CONTACT.email}`}>
+            {GRIEVANCE_CONTACT.email}
+          </a>
+        </dd>
+      </div>
+      <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
+        <dt className="text-[#6B584C]">Phone</dt>
+        <dd>
+          <a className="text-[#2C1E16] underline underline-offset-4" href={`tel:${GRIEVANCE_CONTACT.phone}`}>
+            {GRIEVANCE_CONTACT.phone}
+          </a>
+        </dd>
+      </div>
+    </dl>
+  </div>
+);

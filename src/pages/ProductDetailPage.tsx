@@ -110,7 +110,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   }
 
   const isSaved = wishlist.includes(product.id);
-  const inStock = activeVariant.stock > 0;
+  const inStock = !product.isShowcaseDemo && activeVariant.stock > 0;
   const productUrl = canonicalUrl(`/product/${encodeURIComponent(product.slug)}`);
   const waUrl = buildProductWhatsAppUrl({
     whatsappNumber: settings.whatsappNumber,
@@ -119,7 +119,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
     productUrl,
     variantLabel: activeVariant.label,
     quantity,
-    unitPrice: activeVariant.price,
     customerEnquiry: waEnquiryNote,
   });
 
@@ -214,22 +213,27 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           <div className="space-y-2 border-b border-[#2C1E16]/10 pb-5">
             <p className="text-xs uppercase tracking-[0.16em] text-[#6B584C]">
               {product.categoryName}
-              {product.isShowcaseDemo ? ' · Showcase Demo Listing' : ''}
+              {product.isShowcaseDemo ? ' · Demo concept' : ''}
             </p>
             <h1 className="font-serif text-3xl md:text-4xl text-[#2C1E16] leading-tight">{product.name}</h1>
             <p className="text-sm text-[#6B584C]">{product.subtitle}</p>
 
-            <div className="flex items-center gap-4 pt-2">
-              <div className="flex items-baseline gap-2.5 tabular-nums">
-                <span className="text-2xl font-semibold text-[#2C1E16]">{formatINR(activeVariant.price)}</span>
-                {activeVariant.compareAtPrice && activeVariant.compareAtPrice > activeVariant.price && (
-                  <span className="text-sm text-[#6B584C] line-through">
-                    {formatINR(activeVariant.compareAtPrice)}
-                  </span>
-                )}
+            {product.isShowcaseDemo ? (
+              <p className="pt-2 text-sm font-medium text-[#6B584C]">
+                Showcase concept · Not for sale · Details and availability are unconfirmed
+              </p>
+            ) : (
+              <div className="flex items-center gap-4 pt-2">
+                <div className="flex items-baseline gap-2.5 tabular-nums">
+                  <span className="text-2xl font-semibold text-[#2C1E16]">{formatINR(activeVariant.price)}</span>
+                  {activeVariant.compareAtPrice && activeVariant.compareAtPrice > activeVariant.price && (
+                    <span className="text-sm text-[#6B584C] line-through">
+                      {formatINR(activeVariant.compareAtPrice)}
+                    </span>
+                  )}
+                </div>
               </div>
-              <span className="text-xs text-[#6B584C]">Inclusive of taxes</span>
-            </div>
+            )}
 
           </div>
 
@@ -238,7 +242,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
             <div className="flex items-center justify-between text-xs">
               <span className="uppercase tracking-[0.14em] text-[#6B584C]">Select Variant</span>
               <span className="tabular-nums text-[#6B584C]">
-                {inStock ? `${activeVariant.stock} available · SKU ${activeVariant.sku}` : 'Currently Out of Stock'}
+                {product.isShowcaseDemo
+                  ? 'Variant details to be confirmed'
+                  : inStock
+                    ? `${activeVariant.stock} available · SKU ${activeVariant.sku}`
+                    : 'Availability on request'}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -256,14 +264,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                       : 'border-[#2C1E16]/20 text-[#2C1E16] hover:border-[#B89352]'
                   }`}
                 >
-                  {v.label} — {formatINR(v.price)}
+                  {product.isShowcaseDemo ? v.label : `${v.label} — ${formatINR(v.price)}`}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Quantity + Actions */}
-          {inStock ? (
+          {product.isShowcaseDemo ? (
+            <div className="border border-[#C5A059]/35 bg-[#F4EFE6]/70 p-4 text-sm leading-relaxed text-[#6B584C]">
+              This is a sample catalogue concept, not an item for sale. Ask our concierge about the concept; no price
+              or availability is confirmed.
+            </div>
+          ) : inStock ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="inline-flex items-center border border-[#2C1E16]/25 h-12">
@@ -314,9 +327,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           <div className="p-4 bg-[#F4EFE6]/70 border border-[#2C1E16]/12 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#2C1E16]">
-                Book with Our Concierge
+                Ask our Concierge
               </span>
-              <span className="text-[11px] text-[#6B584C]">WhatsApp booking</span>
+              <span className="text-[11px] text-[#6B584C]">Enquiry only</span>
             </div>
             <input
               type="text"
@@ -333,8 +346,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               className="w-full h-11 inline-flex items-center justify-center gap-2 bg-[#FAF7F2] border border-[#2C1E16]/30 text-[#2C1E16] text-xs font-medium uppercase tracking-[0.14em] hover:border-[#25D366] transition-colors"
             >
               <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-              <span>Book This Creation on WhatsApp</span>
+              <span>{product.isShowcaseDemo ? 'Ask About This Concept' : 'Enquire on WhatsApp'}</span>
             </a>
+            <p className="text-[11px] leading-relaxed text-[#6B584C]">
+              WhatsApp opens a conversation only. No purchase is placed or confirmed by sending a message.
+            </p>
           </div>
 
           {/* Description, Fragrance Notes, Materials & Specs */}
@@ -389,7 +405,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
       </div>
 
       {/* Frequently Bought Together */}
-      {bundlePartner && (
+      {bundlePartner && !product.isShowcaseDemo && !bundlePartner.isShowcaseDemo && (
         <section className="mt-14 p-6 bg-[#F4EFE6]/65 border border-[#2C1E16]/10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
@@ -465,7 +481,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Order on WhatsApp"
+            aria-label="Send a WhatsApp enquiry"
             className="h-10 px-3 border border-[#2C1E16]/25 flex items-center justify-center text-[#2C1E16]"
           >
             <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />

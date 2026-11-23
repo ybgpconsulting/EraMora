@@ -46,7 +46,7 @@ test('order and customer-data endpoints are disabled', async () => {
   };
   const env = {
     DB: fakeDb,
-    SESSION_SECRET: 'order-update-test-secret',
+    SESSION_SECRET: 'order-update-test-secret-with-at-least-32-characters',
   } as unknown as Env;
   const token = await signSessionToken(env, {
     userId: 'admin-1',
@@ -67,7 +67,7 @@ test('order and customer-data endpoints are disabled', async () => {
     env
   );
   assert.equal(response.status, 410);
-  assert.deepEqual((JSON.parse(storedData) as { orders: unknown[] }).orders, []);
+  assert.equal('orders' in JSON.parse(storedData), false);
 
   const sandboxResponse = await handleRequest(
     new Request('https://store.example/api/payments/razorpay/sandbox-complete', {
@@ -134,13 +134,6 @@ test('disabled cancellation endpoint does not mutate historical order or stock d
   };
   let storedData = JSON.stringify(initialState);
   let storedVersion = 1;
-  let stateReads = 0;
-  let saveReadsWaiting = 0;
-  let releaseSaveReadBarrier: () => void = () => {};
-  const saveReadBarrier = new Promise<void>((resolve) => {
-    releaseSaveReadBarrier = () => resolve();
-  });
-
   const fakeDb = {
     batch: async () => [],
     prepare(query: string) {
@@ -150,20 +143,10 @@ test('disabled cancellation endpoint does not mutate historical order or stock d
           values = nextValues;
           return this;
         },
-        first: async <T,>() => {
-          if (query.startsWith('SELECT data, version FROM app_state')) {
-            stateReads += 1;
-            if (stateReads >= 3 && stateReads <= 4) {
-              const snapshot = { data: storedData, version: storedVersion };
-              saveReadsWaiting += 1;
-              if (saveReadsWaiting === 2) releaseSaveReadBarrier();
-              await saveReadBarrier;
-              return snapshot as T;
-            }
-            return { data: storedData, version: storedVersion } as T;
-          }
-          return null as T;
-        },
+        first: async <T,>() =>
+          query.startsWith('SELECT data, version FROM app_state')
+            ? ({ data: storedData, version: storedVersion }) as T
+            : null as T,
         run: async () => {
           if (query.startsWith('UPDATE app_state')) {
             if (values[1] !== storedVersion) return { meta: { changes: 0 } };
@@ -178,7 +161,7 @@ test('disabled cancellation endpoint does not mutate historical order or stock d
   };
   const env = {
     DB: fakeDb,
-    SESSION_SECRET: 'order-cancellation-test-secret',
+    SESSION_SECRET: 'order-cancellation-test-secret-with-at-least-32-characters',
   } as unknown as Env;
   const token = await signSessionToken(env, {
     userId: 'admin-1',
@@ -199,14 +182,12 @@ test('disabled cancellation endpoint does not mutate historical order or stock d
       env
     );
 
-  const responses = await Promise.all([cancelRequest(), cancelRequest()]);
+  const response = await cancelRequest();
   const state = JSON.parse(storedData) as typeof initialState;
 
-  assert.deepEqual(
-    responses.map((response) => response.status),
-    [410, 410]
-  );
-  assert.deepEqual(state.orders, []);
+  assert.equal(response.status, 410);
+  assert.equal('orders' in state, false);
+  assert.equal(state.products[0].variants[0].stock, 10);
 });
 
 test('public product feed and sitemap expose canonical, active catalogue data only', async () => {
@@ -225,6 +206,7 @@ test('public product feed and sitemap expose canonical, active catalogue data on
     updatedAt: '2026-03-10T00:00:00.000Z',
   };
   const storedData = JSON.stringify({
+    schemaVersion: 3,
     products: [product, { ...product, slug: 'archived-item', isArchived: true }],
     reviews: [{ id: 'legacy-review', productId: product.id, authorName: 'Historical Customer' }],
   });
@@ -261,8 +243,49 @@ test('public product feed and sitemap expose canonical, active catalogue data on
 
 });
 
+test('login fails closed without a session secret and rejects oversized streamed bodies', async () => {
+  const storedData = JSON.stringify({ schemaVersion: 3, users: [] });
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      return {
+        bind() {
+          return this;
+        },
+        first: async <T,>() => {
+          if (query.startsWith('SELECT data, version')) return { data: storedData, version: 1 } as T;
+          if (query.startsWith('INSERT INTO rate_limits')) return { count: 1, reset_at: Date.now() + 60_000 } as T;
+          return null as T;
+        },
+        run: async () => ({ meta: { changes: 0 } }),
+      };
+    },
+  };
+  const env = { DB: fakeDb } as unknown as Env;
+
+  const loginResponse = await handleRequest(
+    new Request('https://store.example/api/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://store.example', 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@example.com', password: 'anything' }),
+    }),
+    env
+  );
+  assert.equal(loginResponse.status, 503);
+
+  const oversizedRequest = new Request('https://store.example/api/auth/login', {
+    method: 'POST',
+    headers: { origin: 'https://store.example', 'content-type': 'application/json' },
+    body: JSON.stringify({ value: 'x'.repeat(70 * 1024) }),
+  });
+  assert.equal(oversizedRequest.headers.has('content-length'), false);
+  const oversizedResponse = await handleRequest(oversizedRequest, env);
+  assert.equal(oversizedResponse.status, 413);
+});
+
 test('admin image upload stores a validated image and returns its public URL', async () => {
   const initialState = {
+    schemaVersion: 3,
     users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
   };
   let storedMedia: unknown[] | null = null;
@@ -285,7 +308,7 @@ test('admin image upload stores a validated image and returns its public URL', a
   };
   const env = {
     DB: fakeDb,
-    SESSION_SECRET: 'image-upload-test-secret',
+    SESSION_SECRET: 'image-upload-test-secret-with-at-least-32-characters',
   } as unknown as Env;
   const token = await signSessionToken(env, {
     userId: 'admin-1',

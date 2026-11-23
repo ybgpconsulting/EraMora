@@ -3,7 +3,6 @@ import { Gift, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { ImageWithFallback } from './ImageWithFallback';
 import { WhatsAppIcon } from './WhatsAppIcon';
-import { calculatePricingBreakdown, formatINR } from '../utils/commerce';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -12,8 +11,7 @@ export const CartDrawer: React.FC = () => {
     setIsCartOpen,
     updateCartQuantity,
     removeFromCart,
-    settings,
-    appliedCoupon,
+    products,
     giftWrapSelected,
     setGiftWrapSelected,
     giftMessage,
@@ -23,7 +21,9 @@ export const CartDrawer: React.FC = () => {
 
   if (!isCartOpen) return null;
 
-  const breakdown = calculatePricingBreakdown(cart, appliedCoupon, settings, giftWrapSelected);
+  const enquiryItems = cart.filter(
+    (item) => item.unitPrice > 0 && products.some((product) => product.id === item.productId && !product.isShowcaseDemo)
+  );
   return (
     <div
       role="dialog"
@@ -53,15 +53,15 @@ export const CartDrawer: React.FC = () => {
         </div>
 
         {/* WhatsApp enquiry note */}
-        {cart.length > 0 && (
+        {enquiryItems.length > 0 && (
           <div className="px-5 py-2.5 bg-[#F4EFE6] border-b border-[#2C1E16]/8 text-xs text-[#2C1E16]">
-            Delivery availability and charges are confirmed during your WhatsApp enquiry.
+            This bag is an enquiry only; no order is placed or confirmed.
           </div>
         )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {cart.length === 0 ? (
+          {enquiryItems.length === 0 ? (
             <div className="py-16 text-center space-y-4">
               <p className="font-serif text-2xl text-[#2C1E16]">Your bag is currently empty</p>
               <p className="text-sm text-[#6B584C] max-w-xs mx-auto">
@@ -80,7 +80,7 @@ export const CartDrawer: React.FC = () => {
             </div>
           ) : (
             <>
-              {cart.map((item) => (
+              {enquiryItems.map((item) => (
                 <div
                   key={`${item.productId}-${item.variantId}`}
                   className="flex gap-3.5 pb-4 border-b border-[#2C1E16]/10"
@@ -133,9 +133,6 @@ export const CartDrawer: React.FC = () => {
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
-                      <span className="text-sm font-medium tabular-nums text-[#2C1E16]">
-                        {formatINR(item.unitPrice * item.quantity)}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -153,7 +150,7 @@ export const CartDrawer: React.FC = () => {
                   <span className="text-xs text-[#2C1E16] leading-relaxed">
                     <span className="inline-flex items-center gap-1 font-medium">
                       <Gift className="w-3.5 h-3.5 text-[#B89352]" />
-                      Add Signature ERAMORA Gift Packaging (+{formatINR(settings.giftWrapFee)})
+                      Add Signature ERAMORA Gift Packaging
                     </span>
                     <span className="block text-[#6B584C]">Ivory keepsake wrap, champagne satin ribbon & message card.</span>
                   </span>
@@ -174,27 +171,10 @@ export const CartDrawer: React.FC = () => {
         </div>
 
         {/* Footer CTAs */}
-        {cart.length > 0 && (
+        {enquiryItems.length > 0 && (
           <div className="p-5 border-t border-[#2C1E16]/12 bg-[#FAF7F2] space-y-3">
-            <div className="space-y-1 text-xs text-[#6B584C]">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span className="tabular-nums text-[#2C1E16] font-medium">{formatINR(breakdown.subtotal)}</span>
-              </div>
-              {breakdown.giftWrapFee > 0 && (
-                <div className="flex justify-between">
-                  <span>Signature Gift Packaging</span>
-                  <span className="tabular-nums text-[#2C1E16]">{formatINR(breakdown.giftWrapFee)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span>Delivery</span>
-                <span className="tabular-nums text-[#2C1E16]">To be confirmed</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-[#2C1E16]/10 text-sm font-semibold text-[#2C1E16]">
-                <span>Total</span>
-                <span className="tabular-nums">{formatINR(breakdown.totalAmount)}</span>
-              </div>
+            <div className="text-xs leading-relaxed text-[#6B584C]">
+              The concierge will confirm details, availability, pricing, taxes, and delivery. Sending a message does not confirm a purchase.
             </div>
 
             <div className="grid grid-cols-1 gap-2">
@@ -207,7 +187,7 @@ export const CartDrawer: React.FC = () => {
                 className="w-full inline-flex items-center justify-center gap-2 bg-[#2C1E16] text-[#FAF7F2] py-3 text-xs font-medium uppercase tracking-widest hover:bg-[#3F2C21] transition-colors cursor-pointer"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
-                <span>Continue to WhatsApp checkout</span>
+                <span>Send WhatsApp enquiry</span>
               </button>
               <button
                 type="button"

@@ -1,14 +1,33 @@
-import { base64UrlDecode, base64UrlEncode, hmacSha256Base64Url, randomHex, timingSafeEqualString } from './crypto';
+import { base64UrlDecode, base64UrlEncode, hmacSha256Base64Url, timingSafeEqualString } from './crypto';
 import type { Env } from './env';
-import { createInitialSeed, type DatabaseSchema } from './seed';
+import { createInitialSeed, DATABASE_SCHEMA_VERSION, type DatabaseSchema } from './seed';
 
 const SESSION_COOKIE = 'eramora_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
-
 interface StoredState {
   data: DatabaseSchema;
   version: number;
 }
+
+type PersistedDatabaseSchema = DatabaseSchema & {
+  schemaVersion?: number;
+  orders?: unknown[];
+  reviews?: unknown[];
+  enquiries?: unknown[];
+  abandonedCarts?: unknown[];
+  coupons?: unknown[];
+  settings: DatabaseSchema['settings'] & {
+    freeShippingThreshold?: unknown;
+    standardShippingFee?: unknown;
+    giftWrapFee?: unknown;
+    gstRatePercent?: unknown;
+    taxInclusive?: unknown;
+    codEnabled?: unknown;
+    razorpayEnabled?: unknown;
+    lowStockThreshold?: unknown;
+    policies?: unknown;
+  };
+};
 
 let cached: StoredState | null = null;
 let schemaReady = false;
@@ -20,23 +39,24 @@ const SCHEMA_STATEMENTS = [
      data TEXT NOT NULL,
      version INTEGER NOT NULL DEFAULT 1
    )`,
-  `CREATE TABLE IF NOT EXISTS app_meta (
-     key TEXT PRIMARY KEY,
-     value TEXT NOT NULL
-   )`,
   `CREATE TABLE IF NOT EXISTS media (
      key TEXT PRIMARY KEY,
      content_type TEXT NOT NULL,
      data BLOB NOT NULL,
      created_at TEXT NOT NULL
    )`,
+  `CREATE TABLE IF NOT EXISTS rate_limits (
+     key TEXT PRIMARY KEY,
+     count INTEGER NOT NULL,
+     reset_at INTEGER NOT NULL
+   )`,
+  'DROP TABLE IF EXISTS app_meta',
 ];
 
 /**
  * Called once per request before any handler runs. Creates the schema on the
- * first request of an isolate, seeds the demo catalogue when the database is
- * empty, and refreshes the per-isolate snapshot so cross-isolate admin edits
- * are visible immediately.
+ * first request of an isolate, seeds only an empty database, applies versioned
+ * data migrations without replacing the catalogue, and refreshes the snapshot.
  */
 export async function initDb(env: Env): Promise<void> {
   activeEnv = env;
@@ -46,87 +66,83 @@ export async function initDb(env: Env): Promise<void> {
     schemaReady = true;
   }
 
-  const row = await env.DB.prepare('SELECT data, version FROM app_state WHERE id = 1').first<{
-    data: string;
-    version: number;
-  }>();
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const row = await env.DB.prepare('SELECT data, version FROM app_state WHERE id = 1').first<{
+      data: string;
+      version: number;
+    }>();
 
-  if (row) {
-    const data = JSON.parse(row.data) as DatabaseSchema;
-    const categories = Array.isArray(data.categories) ? data.categories : [];
-    const products = Array.isArray(data.products) ? data.products : [];
-    const users = Array.isArray(data.users) ? data.users : [];
-    const orders = Array.isArray(data.orders) ? data.orders : [];
-    const enquiries = Array.isArray(data.enquiries) ? data.enquiries : [];
-    const abandonedCarts = Array.isArray(data.abandonedCarts) ? data.abandonedCarts : [];
-    const oldCategorySlugs = new Set(['fragrance', 'home-fragrance', 'gift-sets', 'luxury-gifts', 'lifestyle-accessories']);
-    const hasLegacyCategories = categories.some((category) => oldCategorySlugs.has(category.slug));
-    const approvedSlugs = new Set([
-      'curated-fragrances',
-      'scented-candles',
-      'sculptural-candles',
-      'diy-colouring-kits',
-      'gifting',
-    ]);
-    const needsCatalogueMigration =
-      hasLegacyCategories ||
-      categories.length !== 5 ||
-      categories.some((category) => !approvedSlugs.has(category.slug)) ||
-      products.length !== 25;
+    if (row) {
+      const data = JSON.parse(row.data) as PersistedDatabaseSchema;
+      if ((data.schemaVersion || 0) < DATABASE_SCHEMA_VERSION) {
+        delete data.orders;
+        delete data.reviews;
+        delete data.enquiries;
+        delete data.abandonedCarts;
+        delete data.coupons;
+        data.users = Array.isArray(data.users)
+          ? data.users.filter((user) => user.role === 'admin')
+          : [];
+        const legacyImages = new Map([
+          ['/src/assets/images/hero_eramora_atelier_1794827348612.jpg', '/brand/eramora/campaigns/brand-introduction.jpg'],
+          ['/src/assets/images/product_candle_oud_velvet_1794827351032.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
+          ['/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
+          ['/src/assets/images/product_reed_diffuser_neroli_1794827350244.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
+          ['/src/assets/images/product_gift_coffret_luxury_1794827351996.jpg', '/brand/eramora/campaigns/thoughtful-gifting.jpg'],
+          ['/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg', '/brand/eramora/campaigns/brand-introduction.jpg'],
+        ]);
+        if (Array.isArray(data.categories)) {
+          data.categories = data.categories.map((category) => ({
+            ...category,
+            image: legacyImages.get(category.image) || category.image,
+          }));
+        }
+        if (Array.isArray(data.products)) {
+          data.products = data.products.map((product) => ({
+            ...product,
+            images: Array.isArray(product.images)
+              ? product.images.map((image) => legacyImages.get(image) || image)
+              : [],
+          }));
+        }
+        if (data.banners?.heroImage) {
+          data.banners.heroImage = legacyImages.get(data.banners.heroImage) || data.banners.heroImage;
+        }
+        if (data.settings) {
+          delete data.settings.freeShippingThreshold;
+          delete data.settings.standardShippingFee;
+          delete data.settings.giftWrapFee;
+          delete data.settings.gstRatePercent;
+          delete data.settings.taxInclusive;
+          delete data.settings.codEnabled;
+          delete data.settings.razorpayEnabled;
+          delete data.settings.lowStockThreshold;
+          delete data.settings.policies;
+        }
+        data.schemaVersion = DATABASE_SCHEMA_VERSION;
 
-    if (needsCatalogueMigration) {
-      const seed = await createInitialSeed(env);
-      data.categories = seed.categories;
-      data.products = seed.products;
-      data.reviews = [];
-      data.coupons = [];
-      data.orders = [];
-      data.users = users.filter((user) => user.role === 'admin');
-      data.enquiries = [];
-      data.abandonedCarts = [];
-      data.settings = seed.settings;
-      data.banners = seed.banners;
-      await env.DB.prepare(
-        'UPDATE app_state SET data = ?, version = version + 1 WHERE id = 1 AND version = ?'
-      ).bind(JSON.stringify(data), row.version).run();
-      cached = { data, version: row.version + 1 };
+        const result = await env.DB.prepare(
+          'UPDATE app_state SET data = ?, version = version + 1 WHERE id = 1 AND version = ?'
+        ).bind(JSON.stringify(data), row.version).run();
+        if (result.meta.changes === 1) {
+          cached = { data, version: row.version + 1 };
+          return;
+        }
+        continue;
+      }
+
+      cached = { data, version: row.version };
       return;
     }
 
-    const adminUsers = users.filter((user) => user.role === 'admin');
-    const hasLegacyRecords =
-      orders.length > 0 ||
-      enquiries.length > 0 ||
-      abandonedCarts.length > 0 ||
-      adminUsers.length !== users.length;
-    data.orders = [];
-    data.users = adminUsers;
-    data.enquiries = [];
-    data.abandonedCarts = [];
-    if (hasLegacyRecords) {
-      await env.DB.prepare(
-        'UPDATE app_state SET data = ?, version = version + 1 WHERE id = 1 AND version = ?'
-      ).bind(JSON.stringify(data), row.version).run();
-      cached = { data, version: row.version + 1 };
-      return;
-    }
-    cached = { data, version: row.version };
-    return;
+    const seed = await createInitialSeed(env);
+    seed.schemaVersion = DATABASE_SCHEMA_VERSION;
+    await env.DB.prepare('INSERT OR IGNORE INTO app_state (id, data, version) VALUES (1, ?, 1)')
+      .bind(JSON.stringify(seed))
+      .run();
   }
 
-  const seed = await createInitialSeed(env);
-  await env.DB.prepare('INSERT OR IGNORE INTO app_state (id, data, version) VALUES (1, ?, 1)')
-    .bind(JSON.stringify(seed))
-    .run();
-
-  const inserted = await env.DB.prepare('SELECT data, version FROM app_state WHERE id = 1').first<{
-    data: string;
-    version: number;
-  }>();
-
-  cached = inserted
-    ? { data: JSON.parse(inserted.data) as DatabaseSchema, version: inserted.version }
-    : { data: seed, version: 1 };
+  throw new Error('Unable to initialize the database after repeated concurrent updates.');
 }
 
 export function getDb(): DatabaseSchema {
@@ -178,39 +194,16 @@ export async function saveDb(mutator: (db: DatabaseSchema) => void): Promise<Dat
 
 export interface SessionPayload {
   userId: string;
-  role: 'customer' | 'admin';
+  role: 'admin';
   email: string;
   exp: number;
 }
 
-let cachedSecret: string | null = null;
-
-/**
- * Uses SESSION_SECRET when provided. Otherwise a 256-bit secret is generated
- * once and persisted in D1, so sessions survive redeploys and stay consistent
- * across isolates without requiring any setup.
- */
 export async function getSessionSecret(env: Env): Promise<string> {
-  if (env.SESSION_SECRET) return env.SESSION_SECRET;
-  if (cachedSecret) return cachedSecret;
-
-  const existing = await env.DB.prepare("SELECT value FROM app_meta WHERE key = 'session_secret'").first<{
-    value: string;
-  }>();
-  if (existing?.value) {
-    cachedSecret = existing.value;
-    return existing.value;
+  if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
+    throw new Error('SESSION_SECRET must be configured with at least 32 characters.');
   }
-
-  const generated = randomHex(32);
-  await env.DB.prepare("INSERT OR IGNORE INTO app_meta (key, value) VALUES ('session_secret', ?)")
-    .bind(generated)
-    .run();
-  const stored = await env.DB.prepare("SELECT value FROM app_meta WHERE key = 'session_secret'").first<{
-    value: string;
-  }>();
-  cachedSecret = stored?.value || generated;
-  return cachedSecret;
+  return env.SESSION_SECRET;
 }
 
 export async function signSessionToken(
@@ -224,7 +217,7 @@ export async function signSessionToken(
 }
 
 export async function verifySessionToken(env: Env, token: string | undefined): Promise<SessionPayload | null> {
-  if (!token) return null;
+  if (!token || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) return null;
   const parts = token.split('.');
   if (parts.length !== 2) return null;
 
@@ -234,7 +227,16 @@ export async function verifySessionToken(env: Env, token: string | undefined): P
 
   try {
     const parsed = JSON.parse(base64UrlDecode(encoded)) as SessionPayload;
-    if (!parsed || typeof parsed.exp !== 'number' || Date.now() > parsed.exp) return null;
+    if (
+      !parsed ||
+      typeof parsed.userId !== 'string' ||
+      parsed.role !== 'admin' ||
+      typeof parsed.email !== 'string' ||
+      typeof parsed.exp !== 'number' ||
+      Date.now() > parsed.exp
+    ) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;

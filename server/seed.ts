@@ -4,25 +4,19 @@ import type {
   BannerConfig,
   BusinessSettings,
   Category,
-  Coupon,
-  CustomerEnquiry,
-  CustomerUser,
-  Order,
+  AdminUser,
   Product,
-  ProductReview,
 } from '../src/types/store';
 
+export const DATABASE_SCHEMA_VERSION = 3;
+
 export interface DatabaseSchema {
+  schemaVersion: number;
   categories: Category[];
   products: Product[];
-  reviews: ProductReview[];
-  coupons: Coupon[];
-  orders: Order[];
-  users: Array<CustomerUser & { passwordHash: string }>;
-  enquiries: CustomerEnquiry[];
+  users: Array<AdminUser & { passwordHash: string }>;
   banners: BannerConfig;
   settings: BusinessSettings;
-  abandonedCarts: Array<{ id: string; email?: string; mobile?: string; itemsCount: number; subtotal: number; consentedAt: string }>;
 }
 
 const PASSWORD_ITERATIONS = 100_000;
@@ -46,12 +40,11 @@ export async function verifyPassword(password: string, stored: string): Promise<
 }
 
 const IMG = {
-  hero: '/src/assets/images/hero_eramora_atelier_1794827348612.jpg',
-  candle: '/src/assets/images/product_candle_oud_velvet_1794827351032.jpg',
-  perfume: '/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg',
-  diffuser: '/src/assets/images/product_reed_diffuser_neroli_1794827350244.jpg',
-  coffret: '/src/assets/images/product_gift_coffret_luxury_1794827351996.jpg',
-  ritual: '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg',
+  hero: '/brand/eramora/campaigns/brand-introduction.jpg',
+  candle: '/brand/eramora/campaigns/fragrance-art.jpg',
+  perfume: '/brand/eramora/campaigns/fragrance-art.jpg',
+  coffret: '/brand/eramora/campaigns/thoughtful-gifting.jpg',
+  ritual: '/brand/eramora/campaigns/brand-introduction.jpg',
 };
 
 export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
@@ -127,8 +120,8 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
 
   const customAdminPassword = env?.ADMIN_DEMO_PASSWORD;
   const adminPasswordHash = customAdminPassword ? await hashPassword(customAdminPassword) : DEFAULT_ADMIN_HASH;
-  const users: Array<CustomerUser & { passwordHash: string }> = [
-    { id: 'user-admin-1', name: 'ERAMORA Atelier Admin', email: 'admin@eramora.in', mobile: '8368143892', role: 'admin', savedAddresses: [], passwordHash: adminPasswordHash, createdAt: now },
+  const users: Array<AdminUser & { passwordHash: string }> = [
+    { id: 'user-admin-1', name: 'ERAMORA Atelier Admin', email: 'admin@eramora.in', mobile: '8368143892', role: 'admin', passwordHash: adminPasswordHash, createdAt: now },
   ];
 
   const banners: BannerConfig = {
@@ -153,33 +146,15 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
     studioAddress: 'Sector 20, Noida, Uttar Pradesh – 201301, India',
     instagramHandle: '@eramora.in',
     instagramUrl: 'https://www.instagram.com/eramora.in/',
-    freeShippingThreshold: 0,
-    standardShippingFee: 0,
-    giftWrapFee: 0,
-    gstRatePercent: 0,
-    taxInclusive: false,
-    codEnabled: false,
-    razorpayEnabled: false,
     whatsappOrderingEnabled: true,
-    lowStockThreshold: 0,
-    policies: {
-      shipping: 'Delivery availability, dispatch timing and applicable delivery charges are confirmed directly during the customer enquiry or purchase discussion. Please contact ERAMORA on WhatsApp for location-specific information.',
-      returns: 'For cancellation, damaged or incorrect product requests, or return eligibility questions, contact ERAMORA at eramora.in@gmail.com or +91 83681 43892. Each request will be assessed on its individual circumstances, and approval or exchange arrangements will be communicated directly. Shipping-related issues should be reported promptly with available order or delivery details.',
-      privacy: 'ERAMORA does not maintain website customer accounts or website order, payment, address or enquiry records. Shopping bag, wishlist, recently viewed and gift preferences may be stored locally in the customer browser. If you choose to use WhatsApp, information entered in that conversation is handled by WhatsApp and by ERAMORA for that enquiry. The website uses Cloudflare technical infrastructure and may create security or diagnostic logs. No analytics or cookies are used unless separately disclosed in the website implementation.',
-      terms: 'The website allows browsing and WhatsApp-assisted enquiries. Catalogue items marked demo or sample are not approved for sale. Product representations and available specifications are indicative. Opening WhatsApp or sending a message does not confirm an order. Availability, price, product condition, variants, delivery and applicable charges require direct confirmation. Website content is protected intellectual property. Applicable Indian law governs disputes, subject to the owner-confirmed operating and grievance details.',
-    },
   };
 
   return {
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     categories,
     products,
-    reviews: [],
-    coupons: [],
-    orders: [],
     users,
-    enquiries: [],
     banners,
     settings,
-    abandonedCarts: [],
   };
 }

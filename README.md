@@ -24,17 +24,17 @@ The Worker serves `/api/*`, `/uploads/*`, and `/sitemap.xml`; every other reques
 npm install
 # Run once to create local Worker settings.
 Copy-Item .dev.vars.example .dev.vars
+# Edit .dev.vars and set a random SESSION_SECRET (32+ characters) and a unique
+# ADMIN_DEMO_PASSWORD (12–256 characters) before starting the Worker.
 npm run dev
 ```
 
-There is no migration or seed command to run. On the first API request the Worker creates the D1 schema and seeds a demo catalogue, settings, coupons, sample orders, and a local administrator:
+On the first API request the Worker creates the D1 schema and seeds an initial demo catalogue only when `app_state` is empty. Existing catalogues are never replaced automatically. A versioned one-time migration removes retired order/customer data and corrects legacy demo image paths while preserving catalogue and administrator edits.
 
-- Local admin: `admin@eramora.in` / the development-only password in `.dev.vars`
-- Coupons: `WELCOME10`, `GIFT250`
+- Local admin: `admin@eramora.in` / the password set in `.dev.vars` before the first API request
 
-Customers shop and request orders as guests. There is no customer sign-in or account requirement.
-The storefront sends an itemized order request to WhatsApp; the ERAMORA team confirms stock,
-shipping, and payment manually, then records the order and courier details in the admin dashboard.
+The admin portal manages catalogue, banners, and contact settings. Customers can send a WhatsApp
+enquiry; it is not an order, purchase, or payment confirmation.
 
 `npm run dev` builds the SPA into `dist/` and starts `wrangler dev` on <http://localhost:3000> with a local D1 database in `.wrangler/`.
 
@@ -43,36 +43,35 @@ shipping, and payment manually, then records the order and courier details in th
 ```bash
 npm run typecheck  # TypeScript for the client and the Worker
 npm run lint       # alias for typecheck
-npm test           # unit tests (pricing, validation, Razorpay HMAC)
+npm test           # unit and Worker API tests
 npm run build      # production SPA build
 npm run deploy     # build + wrangler deploy
 npm run clean      # remove dist/, dev-dist/, and local Worker state
 ```
 
-## Ordering and shipping
+## WhatsApp enquiries
 
-- Customers do not create accounts. The guest checkout sends the bag, delivery contact, and address details to WhatsApp.
-- A WhatsApp request is not an order confirmation: the team confirms stock, total, payment method, and delivery with the customer.
-- The admin dashboard records confirmed WhatsApp orders and updates payment, fulfillment, courier, and tracking details manually.
-- Customers can track recorded orders with their order number and matching contact details.
+- This site does not collect customer accounts, delivery addresses, orders, or payments.
+- WhatsApp messages contain item selections only. The concierge confirms product details, availability, pricing, applicable taxes, and delivery directly.
+- Sending a WhatsApp message does not place or confirm a purchase.
+- Items marked demo/sample are catalogue concepts and are not for sale.
 
 ## Data and secrets
 
-- `app_state` holds the store document (catalogue, manually recorded orders, administrator, settings) with optimistic concurrency, so concurrent admin order entries cannot oversell stock.
-- `app_meta` stores the auto-generated session signing secret when `SESSION_SECRET` is not provided.
+- `app_state` holds the catalogue, administrator, banners, and contact settings with optimistic concurrency.
+- `rate_limits` holds shared fixed-window API rate-limit counters.
 - `media` stores admin image uploads when R2 is not bound.
-- The runtime schema lives in `server/db.ts`; `migrations/0001_init.sql` mirrors it for teams that prefer explicit migrations. Running the migration is optional.
+- Runtime schema setup is idempotent; `migrations/` contains the corresponding D1 migrations.
 
-Production administrator setup (required before the first production API request):
+Set both Worker secrets before enabling administrator access in production:
 
 ```bash
-wrangler secret put ADMIN_DEMO_PASSWORD  # choose a unique password between 12 and 256 characters
-wrangler secret put SESSION_SECRET       # recommended; otherwise generated and stored in D1
+npx wrangler secret put ADMIN_DEMO_PASSWORD  # unique password, 12–256 characters
+npx wrangler secret put SESSION_SECRET       # random secret, at least 32 characters
 ```
 
-Never use the local demo password in production. Existing databases that contain the old demo
-administrator hash are upgraded to the configured `ADMIN_DEMO_PASSWORD` on the first production
-login. If the production password is missing or invalid, administrator login fails closed.
+Administrator login fails closed if either secret is missing or invalid. Generate a unique session
+secret and never store it in source control or Wrangler `vars`.
 
 Set `APP_URL` as a plain variable so canonical sitemap links point at the public origin.
 
@@ -97,7 +96,8 @@ npm run deploy
 
 1. `wrangler d1 create` prints the `database_id`; replace the placeholder in `wrangler.jsonc`.
 2. `npm run deploy` runs `vite build` and `wrangler deploy`.
-3. **No separate migration, seed, or SQL step is required.** The first request to the deployed Worker creates `app_state`, `app_meta`, and `media` if they are missing, then seeds the catalogue, settings, and administrator. Set `ADMIN_DEMO_PASSWORD` before the first production API request.
+3. Before routing production traffic, set `ADMIN_DEMO_PASSWORD` and `SESSION_SECRET` with `npx wrangler secret put`.
+4. The Worker creates its runtime schema on first request and migrates existing application state without resetting the catalogue. You can apply the tracked SQL migrations explicitly with `npx wrangler d1 migrations apply eramora-store --remote`.
 
 Validate the bundle without publishing:
 
@@ -120,8 +120,9 @@ For Freebuff Sites, use the same `dist/` output and Worker entry through the Sit
 
 - Passwords use PBKDF2-SHA256 (100,000 iterations) via Web Crypto.
 - Sessions are HttpOnly, SameSite=Lax cookies; `Secure` is set on HTTPS.
-- Production admin setup fails closed without `ADMIN_DEMO_PASSWORD`; legacy demo hashes are upgraded on first production login.
-- Admin routes verify both the signed session and the current administrator record. Login and order tracking are rate-limited.
-- Mutating API requests reject cross-origin browser requests; public order tracking requires a matching order number and contact and omits private address/internal notes.
+- Admin routes verify a signed session and current administrator record. A configured `SESSION_SECRET` of at least 32 characters is required for signing.
+- Login rate limits are stored in D1 and shared across Worker isolates.
+- Mutating API requests reject cross-origin browser requests. Retired personal-data endpoints return `410 Gone`.
+- API request bodies are streamed and size-limited; product image uploads have a separate limit.
 - Product edits validate variant pricing, stock, and image URLs. Uploads are size-limited and checked against PNG, JPEG, or WEBP file signatures.
 - API responses are `no-store`; responses include framing, MIME-sniffing, referrer, permissions, and HTTPS transport protections.
