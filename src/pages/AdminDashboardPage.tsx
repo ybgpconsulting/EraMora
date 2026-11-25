@@ -55,12 +55,12 @@ export const AdminDashboardPage: React.FC = () => {
     description: '',
     variantLabel: '220g Amber Jar',
     variantSize: '220g',
-    price: 1950,
+    price: '',
     compareAtPrice: 0,
-    stock: 15,
+    stock: 0,
     sku: '',
     images: [defaultProductImage],
-    isShowcaseDemo: false,
+    isShowcaseDemo: true,
     isFeatured: true,
     isBestseller: false,
     isNewArrival: true,
@@ -278,7 +278,7 @@ export const AdminDashboardPage: React.FC = () => {
               id: `var-${Date.now()}`,
               label: prodForm.variantLabel,
               size: prodForm.variantSize,
-              price: Number(prodForm.price),
+              price: Number(prodForm.price) || 0,
               compareAtPrice: prodForm.compareAtPrice > 0 ? Number(prodForm.compareAtPrice) : undefined,
               stock: Number(prodForm.stock),
               sku: prodForm.sku || `ERA-${Math.floor(100 + Math.random() * 900)}`,
@@ -299,7 +299,24 @@ export const AdminDashboardPage: React.FC = () => {
       }
       notify('Product added to catalogue.', 'success');
       setNewProductOpen(false);
-      setProdForm((p) => ({ ...p, name: '', subtitle: '', description: '' }));
+      setProdForm((p) => ({
+        ...p,
+        name: '',
+        subtitle: '',
+        description: '',
+        variantLabel: '220g Amber Jar',
+        variantSize: '220g',
+        price: '',
+        compareAtPrice: 0,
+        stock: 0,
+        sku: '',
+        isShowcaseDemo: true,
+        isFeatured: true,
+        isBestseller: false,
+        isNewArrival: true,
+        seoTitle: '',
+        seoDescription: '',
+      }));
       await Promise.all([loadAdminData(), refreshCatalog()]);
     } catch {
       notify('Could not create product. Check your connection and try again.', 'error');
@@ -691,15 +708,15 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
                 <div>
                   <label htmlFor="new-product-price" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Price (INR) *
+                    Price (INR) {prodForm.isShowcaseDemo ? '(optional for demo)' : '*'}
                   </label>
                   <input
                     id="new-product-price"
                     type="number"
-                    required
-                    min={1}
+                    required={!prodForm.isShowcaseDemo}
+                    min={prodForm.isShowcaseDemo ? 0 : 1}
                     value={prodForm.price}
-                    onChange={(e) => setProdForm({ ...prodForm, price: Number(e.target.value) })}
+                    onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })}
                     className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
                   />
                 </div>
@@ -771,9 +788,13 @@ export const AdminDashboardPage: React.FC = () => {
                     checked={prodForm.isShowcaseDemo}
                     onChange={(e) => setProdForm({ ...prodForm, isShowcaseDemo: e.target.checked })}
                   />
-                  <span>Mark as Showcase Demo</span>
+                  <span>Showcase demo (not for sale)</span>
                 </label>
               </div>
+              <p className="text-xs leading-relaxed text-[#6B584C]">
+                New products start as demo concepts with zero stock and are excluded from search indexing. Only
+                uncheck this after the product details, price, and availability have been approved.
+              </p>
 
               {prodForm.images.length > 0 && (
                 <div className="space-y-2" aria-live="polite">
@@ -1025,7 +1046,12 @@ export const AdminDashboardPage: React.FC = () => {
                       type="button"
                       aria-label={`Delete category ${cat.name}`}
                       onClick={async () => {
-                        await fetch(`/api/admin/categories/${cat.id}`, { method: 'DELETE' });
+                        const response = await fetch(`/api/admin/categories/${cat.id}`, { method: 'DELETE' });
+                        if (!response.ok) {
+                          const result = (await response.json()) as { error?: string };
+                          notify(result.error || 'Could not remove category.', 'error');
+                          return;
+                        }
                         await refreshCatalog();
                         notify('Category removed.', 'info');
                       }}

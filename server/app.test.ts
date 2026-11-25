@@ -190,7 +190,7 @@ test('disabled cancellation endpoint does not mutate historical order or stock d
   assert.equal(state.products[0].variants[0].stock, 10);
 });
 
-test('public product feed and sitemap expose canonical, active catalogue data only', async () => {
+test('public product feed and sitemap exclude demo and archived products', async () => {
   const product = {
     id: 'internal-product-id',
     slug: 'saffron-noir',
@@ -205,9 +205,19 @@ test('public product feed and sitemap expose canonical, active catalogue data on
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-03-10T00:00:00.000Z',
   };
+  const approvedProduct = {
+    ...product,
+    id: 'approved-product',
+    slug: 'approved-fragrance',
+    isShowcaseDemo: false,
+  };
   const storedData = JSON.stringify({
-    schemaVersion: 3,
-    products: [product, { ...product, slug: 'archived-item', isArchived: true }],
+    schemaVersion: 4,
+    products: [
+      product,
+      approvedProduct,
+      { ...product, slug: 'archived-item', isArchived: true, isShowcaseDemo: false },
+    ],
     reviews: [{ id: 'legacy-review', productId: product.id, authorName: 'Historical Customer' }],
   });
   const fakeDb = {
@@ -222,7 +232,15 @@ test('public product feed and sitemap expose canonical, active catalogue data on
       };
     },
   };
-  const env = { DB: fakeDb } as unknown as Env;
+  const env = {
+    DB: fakeDb,
+    ASSETS: {
+      fetch: async () => new Response(
+        '<!doctype html><html><head><title>Store</title><meta name="robots" content="index, follow"><link rel="canonical" href="https://eramora.in/"></head><body></body></html>',
+        { headers: { 'content-type': 'text/html; charset=utf-8' } }
+      ),
+    },
+  } as unknown as Env;
 
   const feedResponse = await handleRequest(
     new Request('https://store.example/products.json'),
@@ -238,13 +256,141 @@ test('public product feed and sitemap expose canonical, active catalogue data on
   };
 
   assert.equal(feedResponse.status, 200);
-  assert.equal(feed.products.length, 0);
+  assert.deepEqual(feed.products.map((item) => item.slug), ['approved-fragrance']);
 
+  const sitemapResponse = await handleRequest(new Request('https://store.example/sitemap.xml'), env);
+  const sitemap = await sitemapResponse.text();
+  assert.equal(sitemapResponse.status, 200);
+  assert.ok(sitemap.includes('https://eramora.in/product/approved-fragrance'));
+  assert.ok(!sitemap.includes('saffron-noir'));
+  assert.ok(!sitemap.includes('archived-item'));
+
+  let robotsContent = '';
+  const previousHtmlRewriter = Reflect.get(globalThis, 'HTMLRewriter');
+  class HtmlRewriterStub {
+    on(selector: string, handlers: unknown): this {
+      if (selector === 'meta[name="robots"]') {
+        const elementHandler = handlers as {
+          element: (element: { setAttribute: (name: string, value: string) => void }) => void;
+        };
+        elementHandler.element({ setAttribute: (_name, value) => (robotsContent = value) });
+      }
+      return this;
+    }
+
+    transform(response: Response): Response {
+      return response;
+    }
+  }
+  Reflect.set(globalThis, 'HTMLRewriter', HtmlRewriterStub);
+  try {
+    const demoPageResponse = await handleRequest(
+      new Request('https://store.example/product/saffron-noir'),
+      env
+    );
+    assert.equal(demoPageResponse.status, 200);
+    assert.equal(robotsContent, 'noindex, nofollow');
+  } finally {
+    if (previousHtmlRewriter === undefined) Reflect.deleteProperty(globalThis, 'HTMLRewriter');
+    else Reflect.set(globalThis, 'HTMLRewriter', previousHtmlRewriter);
+  }
 
 });
 
+test('new products default to unpublished demo concepts and assigned categories cannot be deleted', async () => {
+  const initialState = {
+    schemaVersion: 4,
+    users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
+    categories: [
+      { id: 'cat-1', name: 'Fragrance', slug: 'fragrance', description: '', image: '/image.jpg', featured: true, sortOrder: 1 },
+      { id: 'cat-empty', name: 'Empty', slug: 'empty', description: '', image: '/image.jpg', featured: true, sortOrder: 2 },
+    ],
+    products: [],
+    banners: {},
+    settings: {},
+  };
+  let storedData = JSON.stringify(initialState);
+  let storedVersion = 1;
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => ({ data: storedData, version: storedVersion }) as T,
+        run: async () => {
+          if (query.startsWith('UPDATE app_state')) {
+            if (values[1] !== storedVersion) return { meta: { changes: 0 } };
+            storedData = String(values[0]);
+            storedVersion += 1;
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        },
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    SESSION_SECRET: 'new-product-test-secret-with-at-least-32-characters',
+  } as unknown as Env;
+  const token = await signSessionToken(env, {
+    userId: 'admin-1',
+    role: 'admin',
+    email: 'admin@example.com',
+  });
+  const headers = {
+    origin: 'https://store.example',
+    authorization: `Bearer ${token}`,
+    'content-type': 'application/json',
+  };
+
+  const publishedWithoutVariant = await handleRequest(
+    new Request('https://store.example/api/admin/products', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: 'Unapproved item', categoryId: 'cat-1', isShowcaseDemo: false }),
+    }),
+    env
+  );
+  assert.equal(publishedWithoutVariant.status, 400);
+
+  const createResponse = await handleRequest(
+    new Request('https://store.example/api/admin/products', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: 'New concept', categoryId: 'cat-1' }),
+    }),
+    env
+  );
+  const created = (await createResponse.json()) as {
+    isShowcaseDemo: boolean;
+    variants: Array<{ price: number; stock: number }>;
+  };
+  assert.equal(createResponse.status, 201);
+  assert.equal(created.isShowcaseDemo, true);
+  assert.deepEqual(created.variants.map(({ price, stock }) => ({ price, stock })), [{ price: 0, stock: 0 }]);
+
+  const deleteAssignedCategory = await handleRequest(
+    new Request('https://store.example/api/admin/categories/cat-1', { method: 'DELETE', headers }),
+    env
+  );
+  assert.equal(deleteAssignedCategory.status, 409);
+  assert.ok(JSON.parse(storedData).categories.some((category: { id: string }) => category.id === 'cat-1'));
+
+  const deleteEmptyCategory = await handleRequest(
+    new Request('https://store.example/api/admin/categories/cat-empty', { method: 'DELETE', headers }),
+    env
+  );
+  assert.equal(deleteEmptyCategory.status, 200);
+  assert.ok(!JSON.parse(storedData).categories.some((category: { id: string }) => category.id === 'cat-empty'));
+});
+
 test('login fails closed without a session secret and rejects oversized streamed bodies', async () => {
-  const storedData = JSON.stringify({ schemaVersion: 3, users: [] });
+  const storedData = JSON.stringify({ schemaVersion: 4, users: [] });
   const fakeDb = {
     batch: async () => [],
     prepare(query: string) {
@@ -285,7 +431,7 @@ test('login fails closed without a session secret and rejects oversized streamed
 
 test('admin image upload stores a validated image and returns its public URL', async () => {
   const initialState = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
   };
   let storedMedia: unknown[] | null = null;

@@ -35,7 +35,7 @@ import type {
 
 const router = new Router();
 
-function parseProductVariants(value: unknown): ProductVariant[] | null {
+function parseProductVariants(value: unknown, allowUnpriced = false): ProductVariant[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.length > 30) return null;
 
   const variants: ProductVariant[] = [];
@@ -60,7 +60,8 @@ function parseProductVariants(value: unknown): ProductVariant[] | null {
       !label ||
       !size ||
       !Number.isFinite(price) ||
-      price <= 0 ||
+      price < 0 ||
+      (price === 0 && !allowUnpriced) ||
       price > 10_000_000 ||
       !Number.isSafeInteger(stock) ||
       stock < 0 ||
@@ -291,19 +292,22 @@ router.post('/api/admin/products', requireAdmin, async (req, res) => {
   const db = getDb();
   const cat = db.categories.find((c) => c.id === body.categoryId) || db.categories[0];
   if (!cat) return res.status(400).json({ error: 'Create a category before adding products.' });
+  const isShowcaseDemo = body.isShowcaseDemo !== false;
   const variants =
     body.variants === undefined
-      ? [
+      ? isShowcaseDemo
+        ? [
           {
             id: `var-${randomHex(3)}`,
-            label: 'Standard',
-            size: 'Standard',
-            price: 1950,
-            stock: 10,
+            label: 'Sample variant',
+            size: 'TBC',
+            price: 0,
+            stock: 0,
             sku: `ERA-${randomHex(2).toUpperCase()}`,
           },
         ]
-      : parseProductVariants(body.variants);
+        : null
+      : parseProductVariants(body.variants, isShowcaseDemo);
   if (!variants) return res.status(400).json({ error: 'Enter valid variant labels, prices, stock, and SKUs.' });
   const images =
     body.images === undefined
@@ -331,7 +335,7 @@ router.post('/api/admin/products', requireAdmin, async (req, res) => {
     images,
     variants,
     badges: Array.isArray(body.badges) ? body.badges : [],
-    isShowcaseDemo: Boolean(body.isShowcaseDemo),
+    isShowcaseDemo,
     isFeatured: Boolean(body.isFeatured),
     isBestseller: Boolean(body.isBestseller),
     isNewArrival: Boolean(body.isNewArrival),
@@ -359,7 +363,10 @@ router.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
   if (body.name !== undefined && !sanitizeString(body.name, 140)) {
     return res.status(400).json({ error: 'Product name cannot be empty.' });
   }
-  const variants = body.variants === undefined ? undefined : parseProductVariants(body.variants);
+  const allowUnpricedVariants =
+    body.isShowcaseDemo === true || (body.isShowcaseDemo === undefined && existing.isShowcaseDemo);
+  const variants =
+    body.variants === undefined ? undefined : parseProductVariants(body.variants, allowUnpricedVariants);
   if (body.variants !== undefined && !variants) {
     return res.status(400).json({ error: 'Enter valid variant labels, prices, stock, and SKUs.' });
   }
@@ -477,9 +484,18 @@ router.post('/api/admin/categories', requireAdmin, async (req, res) => {
 });
 
 router.delete('/api/admin/categories/:id', requireAdmin, async (req, res) => {
+  let categoryInUse = false;
+  let categoryFound = false;
   await saveDb((db) => {
+    categoryFound = db.categories.some((category) => category.id === req.params.id);
+    categoryInUse = db.products.some((product) => product.categoryId === req.params.id);
+    if (!categoryFound || categoryInUse) return;
     db.categories = db.categories.filter((c) => c.id !== req.params.id);
   });
+  if (!categoryFound) return res.status(404).json({ error: 'Category not found.' });
+  if (categoryInUse) {
+    return res.status(409).json({ error: 'Reassign or remove products in this category before deleting it.' });
+  }
   res.json({ ok: true });
 });
 
@@ -740,6 +756,7 @@ function renderSitemap(): Response {
     ),
     ...db.products
       .filter((product) => !product.isArchived)
+      .filter((product) => !product.isShowcaseDemo)
       .map((product) => {
         const lastModified = product.updatedAt || product.createdAt;
         const lastmod = /^\d{4}-\d{2}-\d{2}/.test(lastModified)
@@ -1036,6 +1053,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
         canonicalPath: `/product/${encodeURIComponent(product.slug)}`,
         image: product.images[0],
         productPage: true,
+        noIndex: product.isShowcaseDemo,
         structuredData: createProductStructuredData(product),
       };
     }

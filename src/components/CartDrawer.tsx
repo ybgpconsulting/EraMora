@@ -150,9 +150,11 @@ export const CartDrawer: React.FC = () => {
                   <span className="text-xs text-[#2C1E16] leading-relaxed">
                     <span className="inline-flex items-center gap-1 font-medium">
                       <Gift className="w-3.5 h-3.5 text-[#B89352]" />
-                      Add Signature ERAMORA Gift Packaging
+                      Ask about gift presentation
                     </span>
-                    <span className="block text-[#6B584C]">Ivory keepsake wrap, champagne satin ribbon & message card.</span>
+                    <span className="block text-[#6B584C]">
+                      This is a request only; available options will be confirmed by the concierge.
+                    </span>
                   </span>
                 </label>
 
@@ -161,7 +163,7 @@ export const CartDrawer: React.FC = () => {
                   value={giftMessage}
                   onChange={(e) => setGiftMessage(e.target.value)}
                   maxLength={200}
-                  placeholder="Optional handwritten gift card message..."
+                  placeholder="Optional note for the concierge..."
                   aria-label="Gift card message"
                   className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
                 />

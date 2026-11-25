@@ -73,7 +73,8 @@ npx wrangler secret put SESSION_SECRET       # random secret, at least 32 charac
 Administrator login fails closed if either secret is missing or invalid. Generate a unique session
 secret and never store it in source control or Wrangler `vars`.
 
-Set `APP_URL` as a plain variable so canonical sitemap links point at the public origin.
+Canonical URLs and sitemap entries use the fixed public origin `https://eramora.in`,
+configured in `src/utils/seo.ts`. `APP_URL` does not override this canonical origin.
 
 ### Optional R2 uploads
 

@@ -16,7 +16,11 @@ test('versioned startup migration preserves catalogue edits and administrator da
       { id: 'admin-1', role: 'admin', email: 'admin@example.com' },
       { id: 'customer-1', role: 'customer', email: 'customer@example.com' },
     ],
-    banners: { heroImage: '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg' },
+    banners: {
+      heroImage: '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg',
+      campaignSubtitle:
+        'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal note.',
+    },
     settings: { brandName: 'ERAMORA custom', freeShippingThreshold: 5000, policies: { privacy: 'old copy' } },
     orders: [{ id: 'order-1', customerEmail: 'customer@example.com' }],
     reviews: [{ id: 'review-1', authorName: 'Customer' }],
@@ -60,7 +64,11 @@ test('versioned startup migration preserves catalogue edits and administrator da
   assert.equal(migrated.banners.heroImage, '/brand/eramora/campaigns/brand-introduction.jpg');
   assert.equal(migrated.settings.brandName, 'ERAMORA custom');
   assert.deepEqual(migrated.users.map((user) => user.id), ['admin-1']);
-  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(
+    migrated.banners.campaignSubtitle,
+    'Explore gifting concepts and ask our concierge about current options and availability.'
+  );
+  assert.equal(migrated.schemaVersion, 4);
   for (const retiredField of ['orders', 'reviews', 'enquiries', 'abandonedCarts', 'coupons']) {
     assert.equal(retiredField in migrated, false);
   }

@@ -18,25 +18,25 @@ const steps = [
   {
     n: 'I',
     title: 'Consult',
-    body: 'Share the occasion, guest count and mood on WhatsApp or through our concierge form. We reply with scent directions and ribbon palettes.',
+    body: 'Share the occasion, guest count and preferences with our concierge. Possible options and availability will be confirmed directly.',
   },
   {
     n: 'II',
     title: 'Compose',
-    body: 'We pair vessels, candles and fragrances into a coffret, add your printed or handwritten note, and send a photograph for approval.',
+    body: 'Discuss possible product combinations and presentation with the concierge. Product details, options, and pricing are confirmed before any purchase.',
   },
   {
     n: 'III',
     title: 'Deliver',
-    body: 'Each gifting option can be discussed with the concierge, including presentation and delivery arrangements.',
+    body: 'Ask the concierge about presentation and delivery possibilities for your enquiry; nothing is confirmed until discussed directly.',
   },
 ];
 
 const occasions = [
-  { title: 'Weddings', copy: 'Trousseau favours and welcome hampers, ribbon-matched to your palette.', image: IMG.ritual },
-  { title: 'Corporate', copy: 'Quietly luxurious client and team gifting, branded with restraint.', image: IMG.coffret },
-  { title: 'Anniversaries', copy: 'Layered scent pairings for the rooms a couple shares.', image: IMG.candle },
-  { title: 'Festive', copy: 'Seasonal editions composed in small, numbered batches.', image: IMG.perfume },
+  { title: 'Weddings', copy: 'Ask the concierge about possible wedding gifting options and availability.', image: IMG.ritual },
+  { title: 'Corporate', copy: 'Enquire about potential client or team gifting arrangements.', image: IMG.coffret },
+  { title: 'Anniversaries', copy: 'Explore gifting concepts for anniversaries with the concierge.', image: IMG.candle },
+  { title: 'Festive', copy: 'Ask about seasonal gifting ideas and current availability.', image: IMG.perfume },
 ];
 
 export const GiftingPage: React.FC = () => {
@@ -66,8 +66,8 @@ export const GiftingPage: React.FC = () => {
               {banners.campaignSubtitle}
             </p>
             <p className="mt-4 max-w-md text-[13px] leading-relaxed text-[#6B584C]/85">
-              A scent is never only a note in the air — it is the warmth of an evening conversation, a keepsake opened
-              months later. Our concierge composes every detail with you.
+              A scent can hold a memory — the warmth of an evening conversation or a moment shared. Contact our
+              concierge to discuss gifting ideas; any options and details are confirmed directly.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -91,9 +91,9 @@ export const GiftingPage: React.FC = () => {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#2C1E16]/10 pt-5 text-[10px] uppercase tracking-[0.18em] text-[#6B584C]">
-              <span>Handwritten notes</span>
-              <span>Ribbon finishes</span>
-              <span>Delivery confirmed with concierge</span>
+              <span>Presentation enquiries</span>
+              <span>Options confirmed directly</span>
+              <span>Delivery details on request</span>
             </div>
           </Reveal>
 
@@ -101,14 +101,14 @@ export const GiftingPage: React.FC = () => {
             <div className="relative aspect-[5/4] overflow-hidden bg-[#F4EFE6] md:aspect-[16/11]">
               <ImageWithFallback
                 src={IMG.coffret}
-                alt="ERAMORA linen gift coffret tied with champagne ribbon"
+                alt="Gift coffret concept presented by ERAMORA"
                 loading="eager"
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/35 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 text-[#FAF7F2] md:bottom-5 md:left-6 md:right-6">
                 <p className="font-serif text-lg leading-tight md:text-2xl">The Evening Memory Coffret</p>
-                <span className="text-[9px] uppercase tracking-[0.24em] text-[#FAF7F2]/70">Linen · Ribbon</span>
+                <span className="text-[9px] uppercase tracking-[0.24em] text-[#FAF7F2]/70">Gifting concept</span>
               </div>
             </div>
           </Reveal>
@@ -119,8 +119,7 @@ export const GiftingPage: React.FC = () => {
         <Reveal className="border-y border-[#2C1E16]/10 py-10 text-center">
           <p className="luxe-eyebrow text-[#B89352]">The Gifting Ritual</p>
           <p className="mx-auto mt-4 max-w-xl font-serif text-2xl leading-snug text-[#2C1E16] md:text-3xl">
-            “Every coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal
-            note.”
+            “Thoughtful gifting begins with a conversation about the occasion and the options available.”
           </p>
         </Reveal>
 
@@ -185,7 +184,8 @@ export const GiftingPage: React.FC = () => {
             Tell us the occasion. We will compose the scent.
           </h2>
           <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-[#6B584C]">
-            Minimum orders of 25 coffrets, with samples and ribbon swatches available for approval.
+            Ask the concierge about minimum quantities, samples, presentation, and availability. Details are confirmed
+            for each enquiry.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <button

@@ -52,8 +52,10 @@ test('cart WhatsApp links include product details without totals or purchase con
 
   assert.ok(url.startsWith('https://wa.me/918368143892?text='));
   assert.ok(message.includes('Saffron Noir Eau de Parfum (50 ml Flacon) × 1'));
-  assert.ok(message.includes('Gift packaging requested: Yes'));
+  assert.ok(message.includes('Gift presentation request'));
+  assert.ok(message.includes('this is not confirmed'));
   assert.ok(message.includes('For Mira'));
+  assert.ok(message.includes('Note for the concierge'));
   assert.ok(message.includes('does not place or confirm a purchase'));
   assert.ok(!message.includes('Subtotal'));
   assert.ok(!message.includes('Total'));

@@ -72,10 +72,12 @@ export function buildCartWhatsAppUrl(params: CartWhatsAppParams): string {
     );
   });
 
-  if (params.giftWrapSelected) lines.push('', `Gift packaging requested: Yes`);
+  if (params.giftWrapSelected) {
+    lines.push('', 'Gift presentation request: Please share available options; this is not confirmed.');
+  }
 
   if (params.giftMessage && params.giftMessage.trim()) {
-    lines.push(`Gift Card Message: "${params.giftMessage.trim()}"`);
+    lines.push(`Note for the concierge: "${params.giftMessage.trim()}"`);
   }
   lines.push(
     ``,

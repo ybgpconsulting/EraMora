@@ -13,6 +13,5 @@ export interface Env {
 
   SESSION_SECRET?: string;
   ADMIN_DEMO_PASSWORD?: string;
-  APP_URL?: string;
   ENVIRONMENT?: string;
 }

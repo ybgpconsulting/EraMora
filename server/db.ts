@@ -108,6 +108,13 @@ export async function initDb(env: Env): Promise<void> {
         if (data.banners?.heroImage) {
           data.banners.heroImage = legacyImages.get(data.banners.heroImage) || data.banners.heroImage;
         }
+        if (
+          data.banners?.campaignSubtitle ===
+          'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal note.'
+        ) {
+          data.banners.campaignSubtitle =
+            'Explore gifting concepts and ask our concierge about current options and availability.';
+        }
         if (data.settings) {
           delete data.settings.freeShippingThreshold;
           delete data.settings.standardShippingFee;

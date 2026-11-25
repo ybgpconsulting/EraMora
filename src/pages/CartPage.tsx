@@ -130,7 +130,7 @@ export const CartPage: React.FC = () => {
                     className="mt-0.5 accent-[#2C1E16]"
                   />
                   <span>
-                    <strong>Signature Gift Packaging</strong>
+                    <strong>Ask about gift presentation</strong>
                   </span>
                 </label>
                 <textarea
@@ -138,7 +138,7 @@ export const CartPage: React.FC = () => {
                   value={giftMessage}
                   onChange={(e) => setGiftMessage(e.target.value)}
                   aria-label="Optional gift message"
-                  placeholder="Write a personal note for the recipient..."
+                  placeholder="Ask about gift presentation or leave a note for the concierge..."
                   className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs focus:outline-none"
                 />
               </div>

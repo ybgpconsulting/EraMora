@@ -151,6 +151,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
         description={product.seoDescription || product.subtitle || product.description}
         canonicalPath={`/product/${encodeURIComponent(product.slug)}`}
         image={product.images[0]}
+        noIndex={product.isShowcaseDemo}
         structuredData={productSchema}
       />
 
@@ -335,7 +336,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               type="text"
               value={waEnquiryNote}
               onChange={(e) => setWaEnquiryNote(e.target.value)}
-              placeholder="Optional note (e.g., gift wrap, delivery date, fragrance question)..."
+              placeholder="Optional note (e.g., ask about presentation or product details)..."
               aria-label="WhatsApp enquiry note"
               className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
             />

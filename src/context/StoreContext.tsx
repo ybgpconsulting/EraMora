@@ -75,7 +75,7 @@ const DEFAULT_BANNERS: BannerConfig = {
   heroImage: '/brand/eramora/campaigns/brand-introduction.jpg',
   campaignTitle: 'The Art of Thoughtful Gifting',
   campaignSubtitle:
-    'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal note.',
+    'Explore gifting concepts and ask our concierge about current options and availability.',
   campaignActive: true,
 };
 

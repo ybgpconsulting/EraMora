@@ -53,8 +53,8 @@ export const AboutPage: React.FC = () => {
         <div className="space-y-3">
           <h2 className="font-serif text-2xl text-[#2C1E16]">The Gifting Ritual</h2>
           <p>
-            Gifting is central to ERAMORA. Each coffret is composed to feel deeply personal—paired with ribbon finishes
-            and handwritten message cards for milestones, weddings, and quiet gestures of gratitude.
+            Gifting is one of ERAMORA's catalogue themes. Ask the concierge about possible products and presentation
+            options for milestones or other occasions; availability and details are confirmed directly.
           </p>
         </div>
         <div className="space-y-3">
@@ -180,7 +180,7 @@ export const FaqPage: React.FC = () => {
     },
     {
       q: 'Do you offer custom gift wrapping and personal notes?',
-      a: 'You can request gift packaging and add a gift card message in your Shopping Bag before sending your enquiry to our WhatsApp concierge. The concierge will confirm what is available.',
+      a: 'You can ask the concierge about gift presentation and share a note with your enquiry. Options and availability are confirmed directly and are not guaranteed by this website.',
     },
   ];
 

@@ -94,7 +94,7 @@ const destinations = [
   {
     n: '03',
     title: 'The Gifting Atelier',
-    copy: 'Bespoke coffrets, handwritten notes and ribbon-finished keepsakes.',
+    copy: 'Explore gifting concepts and ask our concierge about available options.',
     href: '/gifting',
     image: IMG.coffret,
   },

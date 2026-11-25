@@ -5,5 +5,4 @@ ENVIRONMENT="development"
 # ADMIN_DEMO_PASSWORD: optionally set a local password (12-256 characters).
 # SESSION_SECRET=""
 # ADMIN_DEMO_PASSWORD=""
-# APP_URL="https://your-domain.example"
 

@@ -8,7 +8,7 @@ import type {
   Product,
 } from '../src/types/store';
 
-export const DATABASE_SCHEMA_VERSION = 3;
+export const DATABASE_SCHEMA_VERSION = 4;
 
 export interface DatabaseSchema {
   schemaVersion: number;
