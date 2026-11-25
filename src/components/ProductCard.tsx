@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowUpRight, Heart, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowUpRight, Check, Heart, Plus, Star } from 'lucide-react';
 import type { Product } from '../types/store';
 import { useStore } from '../context/StoreContext';
 import { ImageWithFallback } from './ImageWithFallback';
@@ -11,7 +11,8 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { navigate, addToCart, wishlist, toggleWishlist } = useStore();
+  const { navigate, addToCart, wishlist, toggleWishlist, notify } = useStore();
+  const [isJustAdded, setIsJustAdded] = useState(false);
   const primaryVariant = product.variants[0];
   const isSaved = wishlist.includes(product.id);
   const inStock = !product.isShowcaseDemo && product.variants.some((v) => v.stock > 0);
@@ -34,10 +35,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       quantity: 1,
       maxStock: primaryVariant.stock,
     });
+    setIsJustAdded(true);
+    notify(`${product.name} added to your bag`, 'success');
+    setTimeout(() => {
+      setIsJustAdded(false);
+    }, 1800);
   };
 
   return (
-    <article className="group flex h-full flex-col">
+    <article className="group flex h-full flex-col border border-[#2C1E16]/8 bg-[#FAF7F2] p-3 transition-all duration-500 hover:border-[#C5A059]/40 hover:shadow-[0_12px_32px_rgba(44,30,22,0.06)]">
       <div className="relative aspect-[4/5] overflow-hidden bg-[#F4EFE6]">
         <a
           href={`/product/${product.slug}`}
@@ -56,10 +62,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           />
         </a>
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1B120D]/25 via-transparent to-transparent opacity-0 transition-opacity duration-700 group-hover:opacity-100" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1B120D]/30 via-transparent to-transparent opacity-0 transition-opacity duration-700 group-hover:opacity-100" />
 
         {badgeText && (
-          <span className="absolute left-3 top-3 bg-[#FAF7F2]/85 px-2.5 py-1 text-[8px] uppercase tracking-[0.2em] text-[#2C1E16]/75 backdrop-blur-md">
+          <span className="absolute left-3 top-3 border border-[#C5A059]/30 bg-[#FAF7F2]/90 px-2.5 py-1 text-[8px] uppercase tracking-[0.2em] text-[#2C1E16] backdrop-blur-md shadow-xs">
             {badgeText}
           </span>
         )}
@@ -72,9 +78,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           }}
           aria-label={isSaved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
           aria-pressed={isSaved}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#2C1E16]/8 bg-[#FAF7F2]/85 text-[#2C1E16] backdrop-blur-md transition-colors hover:text-[#B89352] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#2C1E16]/10 bg-[#FAF7F2]/90 text-[#2C1E16] backdrop-blur-md transition-all duration-300 hover:text-[#B89352] hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
         >
-          <Heart className={`h-4 w-4 ${isSaved ? 'fill-[#B89352] text-[#B89352]' : ''}`} strokeWidth={1.6} />
+          <Heart className={`h-4 w-4 transition-transform duration-300 ${isSaved ? 'fill-[#B89352] text-[#B89352] scale-110' : ''}`} strokeWidth={1.6} />
         </button>
 
         <button
@@ -87,20 +93,49 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 ? `Quick add ${product.name} to bag`
                 : `View ${product.name} availability`
           }
-          className="absolute inset-x-3 bottom-3 flex min-h-11 translate-y-0 items-center justify-center gap-2 bg-[#2C1E16]/95 py-2.5 text-[9px] uppercase tracking-[0.22em] text-[#FAF7F2] opacity-100 transition-all duration-500 hover:bg-[#2C1E16] focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] focus-visible:ring-offset-2 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 cursor-pointer"
+          className={`absolute inset-x-3 bottom-3 flex min-h-11 translate-y-0 items-center justify-center gap-2 py-2.5 text-[9px] uppercase tracking-[0.22em] transition-all duration-500 focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] focus-visible:ring-offset-2 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 cursor-pointer ${
+            isJustAdded
+              ? 'bg-[#2E5A36] text-[#FAF7F2]'
+              : 'bg-[#2C1E16]/95 text-[#FAF7F2] hover:bg-[#2C1E16]'
+          }`}
         >
-          {product.isShowcaseDemo ? (
-            <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+          {isJustAdded ? (
+            <>
+              <Check aria-hidden="true" className="h-3.5 w-3.5 text-[#C5A059]" strokeWidth={2.4} />
+              <span>Added to Bag</span>
+            </>
+          ) : product.isShowcaseDemo ? (
+            <>
+              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+              <span>View concept</span>
+            </>
+          ) : inStock ? (
+            <>
+              <Plus aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+              <span>Quick Add</span>
+            </>
           ) : (
-            <Plus aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+            <>
+              <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />
+              <span>Enquire</span>
+            </>
           )}
-          <span>{product.isShowcaseDemo ? 'View concept' : inStock ? 'Add to bag' : 'View availability'}</span>
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col pt-4">
-        <p className="text-[9px] uppercase tracking-[0.24em] text-[#B89352]">{product.categoryName}</p>
-        <h3 className="mt-1.5 font-serif text-[20px] leading-snug text-[#2C1E16] md:text-[22px]">
+      <div className="flex flex-1 flex-col pt-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[9px] uppercase tracking-[0.24em] text-[#B89352]">{product.categoryName}</p>
+          {product.ratingAverage > 0 && (
+            <div className="flex items-center gap-1 text-[10px] text-[#6B584C]">
+              <Star className="h-3 w-3 fill-[#C5A059] text-[#C5A059]" strokeWidth={1.5} />
+              <span className="font-medium text-[#2C1E16]">{product.ratingAverage.toFixed(1)}</span>
+              {product.reviewCount > 0 && <span className="text-[9px] text-[#6B584C]">({product.reviewCount})</span>}
+            </div>
+          )}
+        </div>
+
+        <h3 className="mt-1 font-serif text-[19px] leading-snug text-[#2C1E16] md:text-[21px]">
           <a
             href={`/product/${product.slug}`}
             onClick={(e) => {
@@ -122,7 +157,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : (
             <>
               <div className="flex items-baseline gap-2 tabular-nums">
-                <span className="text-[13px] font-medium text-[#2C1E16]">
+                <span className="text-[14px] font-semibold text-[#2C1E16]">
                   {primaryVariant ? formatINR(primaryVariant.price) : 'Price on request'}
                 </span>
                 {primaryVariant?.compareAtPrice && primaryVariant.compareAtPrice > primaryVariant.price && (
@@ -130,7 +165,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 )}
               </div>
               <span className="text-[10px] uppercase tracking-[0.12em] text-[#6B584C]">
-                {inStock ? primaryVariant?.size : 'Availability on request'}
+                {inStock ? primaryVariant?.size : 'On request'}
               </span>
             </>
           )}

@@ -3,6 +3,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
 import { useScrollProgress, useWindowScroll } from '../hooks/useScrollProgress';
 import { SEO_PAGES } from '../utils/seo';
@@ -127,7 +128,7 @@ const campaignArtwork = [
 ];
 
 export const HomePage: React.FC = () => {
-  const { navigate, banners, settings } = useStore();
+  const { navigate, banners, settings, products } = useStore();
   const scrollY = useWindowScroll();
   const heroImage =
     banners.heroImage === '/brand/eramora/campaigns/brand-introduction.jpg'
@@ -277,6 +278,36 @@ export const HomePage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* ---------- Curated Atelier Creations ---------- */}
+      {products.length > 0 && (
+        <section className="bg-[#F4EFE6]/50 border-t border-b border-[#2C1E16]/10 py-16 md:py-24">
+          <div className="mx-auto max-w-7xl px-5 md:px-10">
+            <Reveal className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-10">
+              <div>
+                <p className="luxe-eyebrow text-[#B89352]">Curated Creations</p>
+                <h2 className="mt-2 font-serif text-3xl md:text-5xl text-[#2C1E16]">
+                  Objects of scent and ceremony.
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/shop')}
+                className="group inline-flex items-center gap-2 self-start text-[10px] uppercase tracking-[0.24em] text-[#2C1E16] md:self-auto cursor-pointer"
+              >
+                Explore all creations
+                <ArrowUpRight className="h-3.5 w-3.5 text-[#B89352] transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </button>
+            </Reveal>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {products.slice(0, 4).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ---------- Atelier campaign artwork ---------- */}
       <section className="mx-auto max-w-7xl px-5 py-16 md:px-10 md:py-24">

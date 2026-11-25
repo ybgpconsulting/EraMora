@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getDb, initDb, signSessionToken, verifySessionToken } from './db';
+import { DATABASE_SCHEMA_VERSION } from './seed';
 import type { Env } from './env';
 
 test('versioned startup migration preserves catalogue edits and administrator data', async () => {
@@ -68,7 +69,7 @@ test('versioned startup migration preserves catalogue edits and administrator da
     migrated.banners.campaignSubtitle,
     'Explore gifting concepts and ask our concierge about current options and availability.'
   );
-  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(migrated.schemaVersion, DATABASE_SCHEMA_VERSION);
   for (const retiredField of ['orders', 'reviews', 'enquiries', 'abandonedCarts', 'coupons']) {
     assert.equal(retiredField in migrated, false);
   }

@@ -133,7 +133,7 @@ export const ShopPage: React.FC = () => {
       </div>
 
       {/* Secondary Controls: Search, Price, Availability, Sort */}
-      <div className={`grid grid-cols-1 ${hasApprovedProducts ? 'md:grid-cols-12' : 'md:grid-cols-7'} gap-4 items-center bg-[#F4EFE6]/60 border border-[#2C1E16]/10 p-4 mb-10`}>
+      <div className={`grid grid-cols-1 ${hasApprovedProducts ? 'md:grid-cols-12' : 'md:grid-cols-7'} gap-4 items-center bg-[#F4EFE6]/60 border border-[#2C1E16]/10 p-4 mb-6`}>
         <div className="md:col-span-4 relative flex items-center">
           <Search className="w-4 h-4 text-[#6B584C] absolute left-3" />
           <input
@@ -200,6 +200,26 @@ export const ShopPage: React.FC = () => {
             )}
           </select>
         </div>
+      </div>
+
+      {/* Results Header Count & Clear */}
+      <div className="flex items-center justify-between mb-8 text-xs text-[#6B584C] border-b border-[#2C1E16]/8 pb-3">
+        <span>Showing <strong className="text-[#2C1E16] font-medium">{filteredProducts.length}</strong> {filteredProducts.length === 1 ? 'creation' : 'creations'}</span>
+        {(searchQuery || selectedCategory !== 'all' || inStockOnly || maxPrice < 10000) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory('all');
+              setSearchQuery('');
+              setMaxPrice(10000);
+              setInStockOnly(false);
+              navigate('/shop');
+            }}
+            className="text-[#B89352] hover:underline cursor-pointer"
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
 
       {/* Results Grid */}

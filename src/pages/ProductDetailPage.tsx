@@ -1,8 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ChevronDown,
+  Gift,
   Heart,
   Minus,
   Plus,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Truck,
   ZoomIn,
   X,
 } from 'lucide-react';
@@ -47,6 +53,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [waEnquiryNote, setWaEnquiryNote] = useState('');
+  const [openAccordion, setOpenAccordion] = useState<string>('composition');
   const zoomDialogRef = useModalFocus<HTMLDivElement>(zoomOpen, () => setZoomOpen(false));
 
   useEffect(() => {
@@ -141,11 +148,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
       },
       openDrawer
     );
+    notify(`${quantity} × ${product.name} (${activeVariant.label}) added to your bag`, 'success');
   };
 
   const bundlePartner = recommendations[0];
-
   const productSchema = createProductStructuredData(product);
+
+  const toggleAccordion = (section: string) => {
+    setOpenAccordion((prev) => (prev === section ? '' : section));
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 pb-44 md:pb-16">
@@ -168,25 +179,41 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           Shop
         </a>
         <span>/</span>
-        <span className="text-[#2C1E16] truncate">{product.name}</span>
+        <a
+          href={`/shop?category=${product.categoryId}`}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate(`/shop?category=${product.categoryId}`);
+          }}
+          className="hover:text-[#2C1E16]"
+        >
+          {product.categoryName}
+        </a>
+        <span>/</span>
+        <span className="text-[#2C1E16] truncate font-medium">{product.name}</span>
       </nav>
 
       {/* Main Split: Gallery Left + Contiguous Purchase Module Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start">
         {/* Gallery */}
         <div className="lg:col-span-6 space-y-3 lg:sticky lg:top-24">
-          <div className="relative aspect-[4/3] bg-[#F4EFE6] border border-[#2C1E16]/10 overflow-hidden">
+          <div className="relative aspect-[4/3] bg-[#F4EFE6] border border-[#2C1E16]/10 overflow-hidden shadow-xs">
             <ImageWithFallback
               src={getProductImage(product, activeImgIdx)}
               alt={`${product.name} — view ${activeImgIdx + 1}`}
               loading="eager"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-700 ease-out hover:scale-105"
             />
+            {product.badges[0] && (
+              <span className="absolute left-4 top-4 border border-[#C5A059]/40 bg-[#FAF7F2]/95 px-3 py-1.5 text-[9px] uppercase tracking-[0.24em] text-[#2C1E16] backdrop-blur-md shadow-xs">
+                {product.badges[0]}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setZoomOpen(true)}
               aria-label="Zoom product photograph"
-              className="absolute bottom-3 right-3 min-w-11 min-h-11 px-3 bg-[#FAF7F2]/90 border border-[#2C1E16]/15 inline-flex items-center gap-1.5 text-xs text-[#2C1E16] hover:bg-[#FAF7F2] cursor-pointer"
+              className="absolute bottom-3 right-3 min-w-11 min-h-11 px-3 bg-[#FAF7F2]/90 border border-[#2C1E16]/15 inline-flex items-center gap-1.5 text-xs text-[#2C1E16] backdrop-blur-md hover:bg-[#FAF7F2] cursor-pointer shadow-xs"
             >
               <ZoomIn className="w-3.5 h-3.5" />
               <span>Zoom</span>
@@ -201,8 +228,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   type="button"
                   onClick={() => setActiveImgIdx(i)}
                   aria-label={`View photograph ${i + 1}`}
-                  className={`w-20 aspect-[4/3] shrink-0 border overflow-hidden cursor-pointer ${
-                    activeImgIdx === i ? 'border-[#2C1E16]' : 'border-[#2C1E16]/15 opacity-70 hover:opacity-100'
+                  className={`w-20 aspect-[4/3] shrink-0 border overflow-hidden cursor-pointer transition-all ${
+                    activeImgIdx === i ? 'border-[#B89352] ring-1 ring-[#B89352]' : 'border-[#2C1E16]/15 opacity-70 hover:opacity-100'
                   }`}
                 >
                   <ImageWithFallback src={getProductImage(product, i)} alt="" className="w-full h-full object-cover" />
@@ -210,41 +237,82 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               ))}
             </div>
           )}
+
+          {/* Luxury Atelier Guarantee Callouts */}
+          <div className="mt-6 grid grid-cols-3 gap-3 border-t border-[#2C1E16]/10 pt-5 text-center">
+            <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/8">
+              <Truck className="w-4 h-4 mx-auto text-[#B89352] mb-1.5" strokeWidth={1.5} />
+              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Complimentary Shipping</p>
+              <p className="text-[10px] text-[#6B584C] mt-0.5">Across India</p>
+            </div>
+            <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/8">
+              <Gift className="w-4 h-4 mx-auto text-[#B89352] mb-1.5" strokeWidth={1.5} />
+              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Atelier Packaging</p>
+              <p className="text-[10px] text-[#6B584C] mt-0.5">Ivory Linen Box</p>
+            </div>
+            <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/8">
+              <ShieldCheck className="w-4 h-4 mx-auto text-[#B89352] mb-1.5" strokeWidth={1.5} />
+              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Artisanal Purity</p>
+              <p className="text-[10px] text-[#6B584C] mt-0.5">Clean Ingredients</p>
+            </div>
+          </div>
         </div>
 
         {/* Contiguous Purchase Module */}
         <div className="lg:col-span-6 space-y-6">
           <div className="space-y-2 border-b border-[#2C1E16]/10 pb-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-[#6B584C]">
-              {product.categoryName}
-              {product.isShowcaseDemo ? ' · Demo concept' : ''}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#B89352] font-medium">
+                {product.categoryName}
+              </p>
+              {product.ratingAverage > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-[#6B584C]">
+                  <div className="flex text-[#C5A059]">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-3 h-3 fill-current" />
+                    ))}
+                  </div>
+                  <span className="font-semibold text-[#2C1E16]">{product.ratingAverage.toFixed(1)}</span>
+                  {product.reviewCount > 0 && <span>({product.reviewCount} client reviews)</span>}
+                </div>
+              )}
+            </div>
+
             <h1 className="font-serif text-3xl md:text-4xl text-[#2C1E16] leading-tight">{product.name}</h1>
-            <p className="text-sm text-[#6B584C]">{product.subtitle}</p>
+            <p className="text-sm text-[#6B584C] leading-relaxed">{product.subtitle}</p>
 
             {product.isShowcaseDemo ? (
               <p className="pt-2 text-sm font-medium text-[#6B584C]">
                 Showcase concept · Not for sale · Details and availability are unconfirmed
               </p>
             ) : (
-              <div className="flex items-center gap-4 pt-2">
+              <div className="flex items-center justify-between gap-4 pt-2">
                 <div className="flex items-baseline gap-2.5 tabular-nums">
-                  <span className="text-2xl font-semibold text-[#2C1E16]">{formatINR(activeVariant.price)}</span>
+                  <span className="text-3xl font-semibold text-[#2C1E16]">{formatINR(activeVariant.price)}</span>
                   {activeVariant.compareAtPrice && activeVariant.compareAtPrice > activeVariant.price && (
-                    <span className="text-sm text-[#6B584C] line-through">
+                    <span className="text-base text-[#6B584C] line-through">
                       {formatINR(activeVariant.compareAtPrice)}
                     </span>
                   )}
                 </div>
+                {inStock ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-[#2E5A36] font-medium bg-[#2E5A36]/8 px-2.5 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2E5A36] animate-pulse" />
+                    In Stock · Ready to Dispatch
+                  </span>
+                ) : (
+                  <span className="text-xs text-[#8A5020] font-medium bg-[#8A5020]/10 px-2.5 py-1 rounded-full">
+                    Availability on Request
+                  </span>
+                )}
               </div>
             )}
-
           </div>
 
           {/* Variants */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="uppercase tracking-[0.14em] text-[#6B584C]">Select Variant</span>
+              <span className="uppercase tracking-[0.14em] text-[#6B584C] font-medium">Select Size / Presentation</span>
               <span className="tabular-nums text-[#6B584C]">
                 {product.isShowcaseDemo
                   ? 'Variant details to be confirmed'
@@ -253,7 +321,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     : 'Availability on request'}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {product.variants.map((v) => (
                 <button
                   key={v.id}
@@ -262,13 +330,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     setSelectedVariantId(v.id);
                     setQuantity(1);
                   }}
-                  className={`min-h-11 px-4 py-2.5 text-xs font-medium border transition-colors cursor-pointer ${
+                  className={`min-h-12 px-5 py-2.5 text-xs font-medium border transition-all cursor-pointer ${
                     v.id === activeVariant.id
-                      ? 'bg-[#2C1E16] text-[#FAF7F2] border-[#2C1E16]'
-                      : 'border-[#2C1E16]/20 text-[#2C1E16] hover:border-[#B89352]'
+                      ? 'bg-[#2C1E16] text-[#FAF7F2] border-[#2C1E16] shadow-sm'
+                      : 'border-[#2C1E16]/20 bg-[#FAF7F2] text-[#2C1E16] hover:border-[#B89352]'
                   }`}
                 >
-                  {product.isShowcaseDemo ? v.label : `${v.label} — ${formatINR(v.price)}`}
+                  <span className="block font-medium">{v.label}</span>
+                  {!product.isShowcaseDemo && (
+                    <span className={`block text-[11px] mt-0.5 ${v.id === activeVariant.id ? 'text-[#FAF7F2]/80' : 'text-[#6B584C]'}`}>
+                      {formatINR(v.price)}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -283,7 +356,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           ) : inStock ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center border border-[#2C1E16]/25 h-12">
+                <div className="inline-flex items-center border border-[#2C1E16]/25 h-12 bg-[#FAF7F2]">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -292,7 +365,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-10 text-center text-sm font-medium tabular-nums">{quantity}</span>
+                  <span className="w-10 text-center text-sm font-semibold tabular-nums text-[#2C1E16]">{quantity}</span>
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.min(activeVariant.stock, q + 1))}
@@ -306,7 +379,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 <button
                   type="button"
                   onClick={() => handleAdd(true)}
-                  className="flex-1 min-w-[160px] h-12 bg-[#2C1E16] text-[#FAF7F2] text-xs font-medium uppercase tracking-[0.16em] hover:bg-[#3F2C21] transition-colors cursor-pointer"
+                  className="flex-1 min-w-[200px] h-12 bg-[#2C1E16] text-[#FAF7F2] text-xs font-semibold uppercase tracking-[0.2em] hover:bg-[#3F2C21] transition-all cursor-pointer shadow-md hover:shadow-lg"
                 >
                   Add to Bag — {formatINR(activeVariant.price * quantity)}
                 </button>
@@ -315,9 +388,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   type="button"
                   onClick={() => toggleWishlist(product.id)}
                   aria-label={isSaved ? 'Remove from wishlist' : 'Save to wishlist'}
-                  className="w-12 h-12 border border-[#2C1E16]/25 flex items-center justify-center hover:border-[#B89352] cursor-pointer"
+                  className="w-12 h-12 border border-[#2C1E16]/25 bg-[#FAF7F2] flex items-center justify-center hover:border-[#B89352] cursor-pointer transition-colors"
                 >
-                  <Heart className={`w-4 h-4 ${isSaved ? 'fill-[#B89352] text-[#B89352]' : 'text-[#2C1E16]'}`} />
+                  <Heart className={`w-4 h-4 transition-transform duration-300 ${isSaved ? 'fill-[#B89352] text-[#B89352] scale-110' : 'text-[#2C1E16]'}`} />
                 </button>
               </div>
             </div>
@@ -328,18 +401,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           )}
 
           {/* Dedicated WhatsApp Ordering Box */}
-          <div className="p-4 bg-[#F4EFE6]/70 border border-[#2C1E16]/12 space-y-2.5">
+          <div className="p-4 bg-[#F4EFE6]/70 border border-[#2C1E16]/12 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#2C1E16]">
-                Ask our Concierge
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#2C1E16] inline-flex items-center gap-1.5">
+                <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                WhatsApp Atelier Concierge
               </span>
-              <span className="text-[11px] text-[#6B584C]">Enquiry only</span>
+              <span className="text-[11px] text-[#6B584C]">Direct Consultation</span>
             </div>
             <input
               type="text"
               value={waEnquiryNote}
               onChange={(e) => setWaEnquiryNote(e.target.value)}
-              placeholder="Optional note (e.g., ask about presentation or product details)..."
+              placeholder="Add personal note (e.g., custom gift message, delivery date request)..."
               aria-label="WhatsApp enquiry note"
               className="w-full min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
             />
@@ -347,80 +421,182 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full h-11 inline-flex items-center justify-center gap-2 bg-[#FAF7F2] border border-[#2C1E16]/30 text-[#2C1E16] text-xs font-medium uppercase tracking-[0.14em] hover:border-[#25D366] transition-colors"
+              className="w-full h-11 inline-flex items-center justify-center gap-2 bg-[#FAF7F2] border border-[#2C1E16]/30 text-[#2C1E16] text-xs font-semibold uppercase tracking-[0.16em] hover:border-[#25D366] hover:bg-[#F4EFE6] transition-all"
             >
               <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-              <span>{product.isShowcaseDemo ? 'Ask About This Concept' : 'Enquire on WhatsApp'}</span>
+              <span>{product.isShowcaseDemo ? 'Ask About This Concept' : 'Order or Inquire on WhatsApp'}</span>
             </a>
             <p className="text-[11px] leading-relaxed text-[#6B584C]">
-              WhatsApp opens a conversation only. No purchase is placed or confirmed by sending a message.
+              WhatsApp connects directly to our Noida atelier team for custom gift ribboning, personalized advice, and expedited delivery coordination.
             </p>
           </div>
 
-          {/* Description, Fragrance Notes, Materials & Specs */}
-          <div className="pt-4 border-t border-[#2C1E16]/10 space-y-5">
-            <div>
-              <h2 className="font-serif text-xl text-[#2C1E16] mb-2">The Composition</h2>
-              <p className="text-sm text-[#6B584C] leading-relaxed">{product.description}</p>
+          {/* Luxury Accordion System */}
+          <div className="border-t border-[#2C1E16]/12 divide-y divide-[#2C1E16]/10 pt-2">
+            {/* 1. The Composition & Olfactory Story */}
+            <div className="py-4">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('composition')}
+                className="w-full flex items-center justify-between text-left font-serif text-lg text-[#2C1E16] cursor-pointer"
+              >
+                <span>The Composition</span>
+                <ChevronDown className={`w-4 h-4 text-[#B89352] transition-transform duration-300 ${openAccordion === 'composition' ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordion === 'composition' && (
+                <div className="mt-3 text-sm text-[#6B584C] leading-relaxed space-y-3">
+                  <p>{product.description}</p>
+                </div>
+              )}
             </div>
 
+            {/* 2. Olfactive Notes Pyramid */}
             {product.fragranceNotes && (
-              <div className="grid grid-cols-3 gap-4 p-4 bg-[#F4EFE6]/60 border border-[#2C1E16]/10">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-[#6B584C]">Top Notes</p>
-                  <p className="mt-1 text-xs text-[#2C1E16] leading-relaxed">
-                    {product.fragranceNotes.top.join(', ')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-[#6B584C]">Heart Notes</p>
-                  <p className="mt-1 text-xs text-[#2C1E16] leading-relaxed">
-                    {product.fragranceNotes.heart.join(', ')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-[#6B584C]">Base Notes</p>
-                  <p className="mt-1 text-xs text-[#2C1E16] leading-relaxed">
-                    {product.fragranceNotes.base.join(', ')}
-                  </p>
-                </div>
-              </div>
-            )}
+              <div className="py-4">
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion('notes')}
+                  className="w-full flex items-center justify-between text-left font-serif text-lg text-[#2C1E16] cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#C5A059]" />
+                    Olfactory Architecture
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-[#B89352] transition-transform duration-300 ${openAccordion === 'notes' ? 'rotate-180' : ''}`} />
+                </button>
+                {openAccordion === 'notes' && (
+                  <div className="mt-4 space-y-3.5">
+                    {/* Top Notes */}
+                    <div className="p-3.5 bg-[#FAF7F2] border border-[#2C1E16]/10">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="uppercase tracking-[0.18em] font-medium text-[#B89352]">Top Notes · The Opening</span>
+                        <span className="text-[10px] text-[#6B584C]">First 15 minutes</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {product.fragranceNotes.top.map((note) => (
+                          <span key={note} className="bg-[#F4EFE6] px-2.5 py-1 text-xs text-[#2C1E16] border border-[#2C1E16]/8">
+                            {note}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
 
-            {product.ingredientsOrMaterials && (
-              <div>
-                <h3 className="text-xs uppercase tracking-[0.14em] text-[#6B584C] mb-1">Ingredients & Materials</h3>
-                <p className="text-sm text-[#2C1E16]">{product.ingredientsOrMaterials}</p>
-              </div>
-            )}
+                    {/* Heart Notes */}
+                    <div className="p-3.5 bg-[#FAF7F2] border border-[#2C1E16]/10">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="uppercase tracking-[0.18em] font-medium text-[#B89352]">Heart Notes · The Soul</span>
+                        <span className="text-[10px] text-[#6B584C]">2 to 4 hours</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {product.fragranceNotes.heart.map((note) => (
+                          <span key={note} className="bg-[#F4EFE6] px-2.5 py-1 text-xs text-[#2C1E16] border border-[#2C1E16]/8">
+                            {note}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
 
-            {Object.keys(product.specifications).length > 0 && (
-              <dl className="divide-y divide-[#2C1E16]/10 border-t border-b border-[#2C1E16]/10">
-                {Object.entries(product.specifications).map(([key, val]) => (
-                  <div key={key} className="py-2.5 flex justify-between gap-4 text-xs">
-                    <dt className="text-[#6B584C]">{key}</dt>
-                    <dd className="text-[#2C1E16] text-right">{val}</dd>
+                    {/* Base Notes */}
+                    <div className="p-3.5 bg-[#FAF7F2] border border-[#2C1E16]/10">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="uppercase tracking-[0.18em] font-medium text-[#B89352]">Base Notes · The Memory</span>
+                        <span className="text-[10px] text-[#6B584C]">6 to 12+ hours</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {product.fragranceNotes.base.map((note) => (
+                          <span key={note} className="bg-[#F4EFE6] px-2.5 py-1 text-xs text-[#2C1E16] border border-[#2C1E16]/8">
+                            {note}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </dl>
+                )}
+              </div>
             )}
+
+            {/* 3. Specifications & Materials */}
+            <div className="py-4">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('specs')}
+                className="w-full flex items-center justify-between text-left font-serif text-lg text-[#2C1E16] cursor-pointer"
+              >
+                <span>Atelier Specifications</span>
+                <ChevronDown className={`w-4 h-4 text-[#B89352] transition-transform duration-300 ${openAccordion === 'specs' ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordion === 'specs' && (
+                <div className="mt-3 space-y-3">
+                  {Object.keys(product.specifications).length > 0 && (
+                    <dl className="divide-y divide-[#2C1E16]/10 border border-[#2C1E16]/10 bg-[#FAF7F2]">
+                      {Object.entries(product.specifications).map(([key, val]) => (
+                        <div key={key} className="py-2.5 px-3.5 flex justify-between gap-4 text-xs">
+                          <dt className="text-[#6B584C] font-medium">{key}</dt>
+                          <dd className="text-[#2C1E16] text-right">{val}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {product.ingredientsOrMaterials && (
+                    <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/10 text-xs">
+                      <p className="uppercase tracking-[0.14em] text-[#6B584C] font-medium mb-1">Ingredients & Craft Materials</p>
+                      <p className="text-[#2C1E16] leading-relaxed">{product.ingredientsOrMaterials}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Ritual & Care */}
+            <div className="py-4">
+              <button
+                type="button"
+                onClick={() => toggleAccordion('ritual')}
+                className="w-full flex items-center justify-between text-left font-serif text-lg text-[#2C1E16] cursor-pointer"
+              >
+                <span>The Ritual & Care</span>
+                <ChevronDown className={`w-4 h-4 text-[#B89352] transition-transform duration-300 ${openAccordion === 'ritual' ? 'rotate-180' : ''}`} />
+              </button>
+              {openAccordion === 'ritual' && (
+                <div className="mt-3 text-xs text-[#6B584C] leading-relaxed space-y-2 p-3.5 bg-[#FAF7F2] border border-[#2C1E16]/10">
+                  {product.categoryId === 'cat-scented-candles' || product.categoryId === 'cat-sculptural-candles' ? (
+                    <>
+                      <p>• On first burn, allow the melted wax pool to reach the edges of the vessel (~2 to 3 hours) to prevent candle tunneling.</p>
+                      <p>• Trim the cotton wick to 5mm prior to each lighting to maintain a pure, soot-free flame.</p>
+                      <p>• Burn on a heat-resistant surface away from direct drafts, children, and flammable objects.</p>
+                    </>
+                  ) : product.categoryId === 'cat-curated-fragrances' ? (
+                    <>
+                      <p>• Spray onto warm pulse points: the inside of wrists, hollow of the clavicle, and behind the ears.</p>
+                      <p>• Allow the macerated essence to dry naturally without friction; rubbing can bruise delicate volatile top notes.</p>
+                      <p>• Store away from direct sunlight and temperature fluctuations to preserve pure botanical extracts.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>• Keep in a cool, dry place. Handcrafted with non-toxic, archival-grade artisanal components.</p>
+                      <p>• Each set arrives carefully checked by our atelier team prior to dispatch.</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Frequently Bought Together */}
       {bundlePartner && !product.isShowcaseDemo && !bundlePartner.isShowcaseDemo && (
-        <section className="mt-14 p-6 bg-[#F4EFE6]/65 border border-[#2C1E16]/10">
+        <section className="mt-14 p-6 bg-[#F4EFE6]/65 border border-[#2C1E16]/10 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-[#B89352]">Complete the Ritual</p>
+              <p className="text-xs uppercase tracking-[0.16em] text-[#B89352] font-medium">Complete the Ritual</p>
               <h2 className="font-serif text-2xl text-[#2C1E16] mt-1">Frequently Paired Together</h2>
               <p className="text-xs text-[#6B584C] mt-1">
                 {product.name} ({activeVariant.label}) + {bundlePartner.name} ({bundlePartner.variants[0]?.label})
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
-              <span className="text-lg font-semibold tabular-nums text-[#2C1E16]">
+              <span className="text-xl font-semibold tabular-nums text-[#2C1E16]">
                 {formatINR(activeVariant.price + (bundlePartner.variants[0]?.price || 0))}
               </span>
               <button
@@ -442,7 +618,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     });
                   }
                 }}
-                className="bg-[#2C1E16] text-[#FAF7F2] px-5 py-2.5 text-xs uppercase tracking-[0.14em] hover:bg-[#3F2C21] cursor-pointer"
+                className="bg-[#2C1E16] text-[#FAF7F2] px-6 py-3 text-xs uppercase tracking-[0.16em] font-medium hover:bg-[#3F2C21] transition-all cursor-pointer shadow-sm"
               >
                 Add Pairing to Bag
               </button>
@@ -454,7 +630,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
       {/* Related & Recently Viewed */}
       {related.length > 0 && (
         <section className="mt-16 pt-12 border-t border-[#2C1E16]/10">
-          <h2 className="font-serif text-3xl text-[#2C1E16] mb-6">Related Creations</h2>
+          <div className="flex items-baseline justify-between mb-6">
+            <h2 className="font-serif text-3xl text-[#2C1E16]">Related Creations</h2>
+            <button
+              type="button"
+              onClick={() => navigate(`/shop?category=${product.categoryId}`)}
+              className="text-xs uppercase tracking-[0.16em] text-[#B89352] hover:underline cursor-pointer"
+            >
+              View all in {product.categoryName} →
+            </button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {related.map((p) => (
               <ProductCard key={p.id} product={p} />
@@ -476,24 +661,24 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
 
       {/* Sticky Mobile Add to Bag Bar */}
       {inStock && (
-        <div className="md:hidden fixed bottom-[calc(env(safe-area-inset-bottom)+78px)] left-0 right-0 z-30 bg-[#FAF7F2]/95 backdrop-blur-md border-t border-[#2C1E16]/12 px-4 py-2.5 flex items-center gap-2.5">
+        <div className="md:hidden fixed bottom-[calc(env(safe-area-inset-bottom)+76px)] left-0 right-0 z-30 bg-[#FAF7F2]/95 backdrop-blur-md border-t border-[#2C1E16]/12 px-4 py-2.5 flex items-center gap-2.5 shadow-lg">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-[#2C1E16] truncate">{product.name}</p>
-            <p className="text-xs text-[#6B584C] tabular-nums">{formatINR(activeVariant.price * quantity)}</p>
+            <p className="text-xs font-semibold text-[#2C1E16] truncate">{product.name}</p>
+            <p className="text-xs text-[#6B584C] tabular-nums font-medium">{formatINR(activeVariant.price * quantity)}</p>
           </div>
           <a
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Send a WhatsApp enquiry"
-            className="h-10 px-3 border border-[#2C1E16]/25 flex items-center justify-center text-[#2C1E16]"
+            className="h-10 px-3 border border-[#2C1E16]/25 flex items-center justify-center text-[#2C1E16] bg-[#FAF7F2]"
           >
             <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
           </a>
           <button
             type="button"
             onClick={() => handleAdd(true)}
-            className="h-10 px-5 bg-[#2C1E16] text-[#FAF7F2] text-xs font-medium uppercase tracking-wider cursor-pointer"
+            className="h-10 px-5 bg-[#2C1E16] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider cursor-pointer shadow-sm"
           >
             Add to Bag
           </button>
@@ -508,21 +693,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           aria-label="Product Photograph Zoom"
           ref={zoomDialogRef}
           tabIndex={-1}
-          className="fixed inset-0 z-50 bg-[#2C1E16]/85 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-[#2C1E16]/85 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setZoomOpen(false)}
         >
           <button
             type="button"
             onClick={() => setZoomOpen(false)}
             aria-label="Close zoom view"
-            className="absolute top-5 right-5 h-11 w-11 bg-[#FAF7F2] text-[#2C1E16] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] cursor-pointer"
+            className="absolute top-5 right-5 h-11 w-11 bg-[#FAF7F2] text-[#2C1E16] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] cursor-pointer shadow-lg"
           >
             <X className="w-5 h-5" />
           </button>
           <img
             src={product.images[activeImgIdx] || product.images[0]}
             alt={product.name}
-            className="max-h-[85vh] max-w-[92vw] object-contain"
+            className="max-h-[85vh] max-w-[92vw] object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

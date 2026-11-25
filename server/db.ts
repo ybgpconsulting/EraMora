@@ -96,13 +96,22 @@ export async function initDb(env: Env): Promise<void> {
             image: legacyImages.get(category.image) || category.image,
           }));
         }
+        const initialSeed = await createInitialSeed(env);
+        const seedProductMap = new Map(initialSeed.products.map((p) => [p.id, p]));
         if (Array.isArray(data.products)) {
-          data.products = data.products.map((product) => ({
-            ...product,
-            images: Array.isArray(product.images)
-              ? product.images.map((image) => legacyImages.get(image) || image)
-              : [],
-          }));
+          data.products = data.products.map((product) => {
+            if (product.id.startsWith('demo-') && seedProductMap.has(product.id)) {
+              return seedProductMap.get(product.id)!;
+            }
+            return {
+              ...product,
+              images: Array.isArray(product.images)
+                ? product.images.map((image) => legacyImages.get(image) || image)
+                : [],
+            };
+          });
+        } else {
+          data.products = initialSeed.products;
         }
         if (data.banners?.heroImage) {
           data.banners.heroImage = legacyImages.get(data.banners.heroImage) || data.banners.heroImage;

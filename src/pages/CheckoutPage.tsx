@@ -1,10 +1,10 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Gift, ShieldCheck, Truck } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { ImageWithFallback } from '../components/ImageWithFallback';
-import { buildCartWhatsAppUrl } from '../utils/commerce';
+import { buildCartWhatsAppUrl, formatINR } from '../utils/commerce';
 import { SEO_PAGES } from '../utils/seo';
 
 export const CheckoutPage: React.FC = () => {
@@ -12,6 +12,10 @@ export const CheckoutPage: React.FC = () => {
   const enquiryItems = cart.filter(
     (item) => item.unitPrice > 0 && products.some((product) => product.id === item.productId && !product.isShowcaseDemo)
   );
+
+  const subtotal = enquiryItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+  const totalItemCount = enquiryItems.reduce((acc, item) => acc + item.quantity, 0);
+
   const whatsappUrl = buildCartWhatsAppUrl({
     whatsappNumber: settings.whatsappNumber,
     brandName: settings.brandName,
@@ -27,20 +31,19 @@ export const CheckoutPage: React.FC = () => {
       <button
         type="button"
         onClick={() => navigate('/cart')}
-        className="mb-6 inline-flex min-h-11 items-center gap-2 text-xs uppercase tracking-[0.14em] text-[#6B584C] hover:text-[#2C1E16]"
+        className="mb-6 inline-flex min-h-11 items-center gap-2 text-xs uppercase tracking-[0.14em] text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back to your bag
       </button>
 
-      <div className="grid gap-8 md:grid-cols-[1fr_0.8fr]">
-        <section className="space-y-5">
+      <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-start">
+        <section className="space-y-6">
           <div>
             <p className="luxe-eyebrow text-[#B89352]">Personal Concierge</p>
-            <h1 className="mt-2 font-serif text-4xl text-[#2C1E16]">Send an Enquiry</h1>
+            <h1 className="mt-2 font-serif text-3xl md:text-4xl text-[#2C1E16]">Atelier Order & Consultation</h1>
             <p className="mt-3 text-sm leading-relaxed text-[#6B584C]">
-              No account or customer details are collected on this website. Your selection opens in WhatsApp for
-              discussion with our concierge. Sending a message does not place or confirm a purchase.
+              Privacy-first ordering: no forced logins or stored payment data. Your selected creations open in a direct WhatsApp consultation with our atelier concierge team in Noida.
             </p>
           </div>
 
@@ -50,7 +53,7 @@ export const CheckoutPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/shop')}
-                className="min-h-11 bg-[#2C1E16] px-5 text-xs uppercase tracking-[0.14em] text-[#FAF7F2]"
+                className="min-h-11 bg-[#2C1E16] px-6 text-xs uppercase tracking-[0.14em] text-[#FAF7F2] cursor-pointer"
               >
                 Explore the collection
               </button>
@@ -58,27 +61,50 @@ export const CheckoutPage: React.FC = () => {
           ) : (
             <>
               <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.16em] text-[#6B584C] font-medium">Selected Creations ({totalItemCount})</p>
                 {enquiryItems.map((item) => (
-                  <div key={`${item.productId}-${item.variantId}`} className="flex items-center gap-3 border border-[#2C1E16]/10 bg-[#FAF7F2] p-3">
-                    <ImageWithFallback src={item.image} alt={item.name} className="h-16 w-16 shrink-0 object-cover" />
+                  <div key={`${item.productId}-${item.variantId}`} className="flex items-center gap-4 border border-[#2C1E16]/10 bg-[#FAF7F2] p-3.5 shadow-xs">
+                    <ImageWithFallback src={item.image} alt={item.name} className="h-16 w-16 shrink-0 object-cover border border-[#2C1E16]/8" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-base text-[#2C1E16]">{item.name}</p>
+                      <p className="truncate font-serif text-base text-[#2C1E16] font-medium">{item.name}</p>
                       <p className="text-xs text-[#6B584C]">{item.variantLabel} · Qty {item.quantity}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold text-[#2C1E16] tabular-nums">
+                        {formatINR(item.unitPrice * item.quantity)}
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
 
+              {giftWrapSelected && (
+                <div className="p-4 bg-[#F4EFE6]/70 border border-[#2C1E16]/10 text-xs text-[#2C1E16] space-y-1">
+                  <span className="font-semibold flex items-center gap-1.5">
+                    <Gift className="w-4 h-4 text-[#B89352]" />
+                    Complimentary Boutique Gift Packaging Included
+                  </span>
+                  {giftMessage && (
+                    <p className="text-[#6B584C] italic pl-5.5">“{giftMessage}”</p>
+                  )}
+                </div>
+              )}
+
               {settings.whatsappOrderingEnabled ? (
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#2C1E16] px-4 text-xs font-medium uppercase tracking-[0.14em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352]"
-                >
-                  <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                  Send enquiry on WhatsApp
-                </a>
+                <div className="space-y-3 pt-2">
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#2C1E16] px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#FAF7F2] transition-all hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] shadow-md hover:shadow-lg"
+                  >
+                    <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                    <span>Send Order to WhatsApp Concierge</span>
+                  </a>
+                  <p className="text-center text-[11px] leading-relaxed text-[#6B584C]">
+                    Your bag items are pre-formatted into the message. Our concierge will confirm availability and delivery dispatch directly with you.
+                  </p>
+                </div>
               ) : (
                 <p role="status" className="border border-[#2C1E16]/15 p-4 text-sm text-[#6B584C]">
                   WhatsApp ordering is temporarily unavailable.
@@ -88,12 +114,39 @@ export const CheckoutPage: React.FC = () => {
           )}
         </section>
 
-        <aside className="h-fit space-y-3 border border-[#2C1E16]/12 bg-[#F4EFE6]/70 p-6">
-          <h2 className="font-serif text-2xl text-[#2C1E16]">Before you continue</h2>
-          <p className="text-sm leading-relaxed text-[#6B584C]">
-            The concierge will confirm product details, availability, final prices, applicable taxes, and delivery
-            charges. No payment is taken and no purchase is confirmed on this page.
-          </p>
+        <aside className="space-y-5 border border-[#2C1E16]/12 bg-[#F4EFE6]/70 p-6 shadow-sm">
+          <h2 className="font-serif text-2xl text-[#2C1E16]">Order Overview</h2>
+
+          <div className="space-y-2 text-xs border-b border-[#2C1E16]/10 pb-4">
+            <div className="flex justify-between items-baseline text-sm">
+              <span className="text-[#2C1E16] font-medium">Estimated Subtotal</span>
+              <span className="font-semibold text-lg text-[#2C1E16] tabular-nums">{formatINR(subtotal)}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs text-[#6B584C]">
+              <span className="flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-[#B89352]" />
+                Boutique Shipping
+              </span>
+              <span className="text-[#2E5A36] font-semibold">Complimentary</span>
+            </div>
+            <div className="flex justify-between items-center text-xs text-[#6B584C]">
+              <span className="flex items-center gap-1.5">
+                <Gift className="w-3.5 h-3.5 text-[#B89352]" />
+                Atelier Gift Box
+              </span>
+              <span className="text-[#2E5A36] font-semibold">Complimentary</span>
+            </div>
+          </div>
+
+          <div className="space-y-3 text-xs leading-relaxed text-[#6B584C]">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#B89352] shrink-0 mt-0.5" />
+              <p>Hand-poured and bottled with precision in small batches at our studio in Noida, Uttar Pradesh.</p>
+            </div>
+            <p>
+              Payment details (UPI, Card, Bank Transfer) and dispatch tracking are coordinated directly by your dedicated concierge.
+            </p>
+          </div>
         </aside>
       </div>
     </div>

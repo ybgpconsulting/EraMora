@@ -3,6 +3,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { buildGeneralWhatsAppUrl } from '../utils/commerce';
@@ -41,7 +42,8 @@ const occasions = [
 ];
 
 export const GiftingPage: React.FC = () => {
-  const { navigate, banners, settings } = useStore();
+  const { navigate, banners, settings, products } = useStore();
+  const giftingProducts = products.filter((p) => p.categoryId === 'cat-gifting');
 
   const waUrl = buildGeneralWhatsAppUrl(
     settings.whatsappNumber,
@@ -132,6 +134,29 @@ export const GiftingPage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* Curated Gifting Coffrets */}
+      {giftingProducts.length > 0 && (
+        <section className="mx-auto max-w-7xl px-5 py-14 md:px-10 md:py-20 border-t border-[#2C1E16]/10">
+          <Reveal className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-10">
+            <div>
+              <p className="luxe-eyebrow text-[#B89352]">Curated Coffrets</p>
+              <h2 className="mt-2 font-serif text-3xl md:text-5xl text-[#2C1E16]">
+                Ready to bestow.
+              </h2>
+            </div>
+            <p className="max-w-md text-xs text-[#6B584C] md:text-right">
+              Each coffret arrives in our signature warm ivory linen box, sealed with champagne satin ribbon and handwritten card.
+            </p>
+          </Reveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {giftingProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="bg-[#F4EFE6]/60">
         <div className="mx-auto max-w-7xl px-5 py-14 md:px-10 md:py-20">
