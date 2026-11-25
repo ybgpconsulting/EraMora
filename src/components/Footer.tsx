@@ -60,8 +60,8 @@ export const Footer: React.FC = () => {
     <footer
       className={`bg-[#241811] text-[#FAF7F2] ${
         isProductRoute
-          ? 'pb-[calc(env(safe-area-inset-bottom)+240px)]'
-          : 'pb-[calc(env(safe-area-inset-bottom)+180px)]'
+          ? 'pb-[calc(env(safe-area-inset-bottom)+176px)]'
+          : 'pb-[calc(env(safe-area-inset-bottom)+100px)]'
       } md:pb-28`}
     >
       <div className="mx-auto max-w-7xl px-5 pt-9 md:px-8 md:pt-11 lg:px-10">

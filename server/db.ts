@@ -86,7 +86,6 @@ export async function initDb(env: Env): Promise<void> {
         const legacyImages = new Map([
           ['/src/assets/images/hero_eramora_atelier_1794827348612.jpg', '/brand/eramora/campaigns/brand-introduction.jpg'],
           ['/src/assets/images/product_candle_oud_velvet_1794827351032.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
-          ['/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
           ['/src/assets/images/product_reed_diffuser_neroli_1794827350244.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
           ['/src/assets/images/product_gift_coffret_luxury_1794827351996.jpg', '/brand/eramora/campaigns/thoughtful-gifting.jpg'],
           ['/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg', '/brand/eramora/campaigns/brand-introduction.jpg'],

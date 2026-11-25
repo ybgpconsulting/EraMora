@@ -5,16 +5,16 @@ import { ImageWithFallback } from '../components/ImageWithFallback';
 import { YbgpProjectInquiryCard } from '../components/YbgpBrandingCta';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { GRIEVANCE_CONTACT, LEGAL_POLICIES, type LegalPolicyKind } from '../content/policies';
+import { ERAMORA_FAQS } from '../content/faqs';
 import { buildGeneralWhatsAppUrl } from '../utils/commerce';
+import { createFaqStructuredData, SEO_PAGES } from '../utils/seo';
 
 export const AboutPage: React.FC = () => {
   const { navigate } = useStore();
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-12 md:py-16 space-y-14">
       <SeoHead
-        title="About ERAMORA — Where Fragrance Meets Emotion"
-        description="Discover ERAMORA's philosophy of emotional fragrance, quiet craftsmanship, and meaningful gifting."
-        canonicalPath="/about"
+        {...SEO_PAGES.about}
       />
 
       <header className="text-center max-w-2xl mx-auto space-y-4">
@@ -92,9 +92,7 @@ export const ContactPage: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-12 md:py-16">
       <SeoHead
-        title="Contact & Custom Gifting | ERAMORA"
-        description="Reach ERAMORA concierge for product advice, order support, or bespoke wedding & corporate gifting."
-        canonicalPath="/contact"
+        {...SEO_PAGES.contact}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -165,55 +163,24 @@ export const ContactPage: React.FC = () => {
 };
 
 export const FaqPage: React.FC = () => {
-  const faqs = [
-    {
-      q: 'How do WhatsApp enquiries work at ERAMORA?',
-      a: 'You can send a product or bag enquiry to our concierge through WhatsApp. The team will confirm product details, availability, pricing, delivery, and payment steps directly. Sending a message does not place or confirm a purchase.',
-    },
-    {
-      q: 'Which Indian cities do you deliver to?',
-      a: 'Delivery availability and estimated timing are confirmed during your enquiry. Contact our WhatsApp concierge with the destination and selected product for location-specific assistance.',
-    },
-    {
-      q: 'What payment methods are accepted?',
-      a: 'Our concierge confirms availability, delivery charges, and payment options with you directly on WhatsApp before your order is confirmed.',
-    },
-    {
-      q: 'Do you offer custom gift wrapping and personal notes?',
-      a: 'You can ask the concierge about gift presentation and share a note with your enquiry. Options and availability are confirmed directly and are not guaranteed by this website.',
-    },
-  ];
-
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map((f) => ({
-      '@type': 'Question',
-      name: f.q,
-      acceptedAnswer: { '@type': 'Answer', text: f.a },
-    })),
-  };
-
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-8 py-12 md:py-16">
       <SeoHead
-        title="Frequently Asked Questions | ERAMORA"
-        description="Answers on ERAMORA sample products, WhatsApp enquiries, concierge gifting and website policies."
-        canonicalPath="/faq"
-        structuredData={faqSchema}
+        {...SEO_PAGES.faq}
+        structuredData={createFaqStructuredData(ERAMORA_FAQS)}
       />
       <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">Client Assistance</p>
       <h1 className="font-serif text-4xl text-[#2C1E16] mt-1 mb-8 border-b border-[#2C1E16]/12 pb-6">
         Frequently Asked Questions
       </h1>
       <div className="divide-y divide-[#2C1E16]/12">
-        {faqs.map((item, i) => (
+        {ERAMORA_FAQS.map((item, i) => (
           <details key={i} open={i === 0} className="py-5 group">
             <summary className="font-serif text-xl text-[#2C1E16] cursor-pointer list-none flex justify-between items-center">
-              <span>{item.q}</span>
+              <span>{item.question}</span>
               <span className="text-sm text-[#B89352]">+</span>
             </summary>
-            <p className="mt-3 text-sm text-[#6B584C] leading-relaxed">{item.a}</p>
+            <p className="mt-3 text-sm text-[#6B584C] leading-relaxed">{item.answer}</p>
           </details>
         ))}
       </div>
@@ -231,9 +198,12 @@ export const PolicyPage: React.FC<{ kind: LegalPolicyKind }> = ({ kind }) => {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-8 py-12 md:py-16 space-y-6">
       <SeoHead
-        title={`${titles[kind]} | ERAMORA`}
-        description={`Read the ERAMORA ${titles[kind]}.`}
-        canonicalPath={`/${kind === 'terms' ? 'terms' : `${kind}-policy`}`}
+        {...({
+          shipping: SEO_PAGES.shippingPolicy,
+          returns: SEO_PAGES.returnsPolicy,
+          privacy: SEO_PAGES.privacyPolicy,
+          terms: SEO_PAGES.terms,
+        } as const)[kind]}
       />
       <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">ERAMORA Store Policies</p>
       <h1 className="font-serif text-4xl text-[#2C1E16] border-b border-[#2C1E16]/12 pb-6">{titles[kind]}</h1>
@@ -246,11 +216,7 @@ export const PolicyPage: React.FC<{ kind: LegalPolicyKind }> = ({ kind }) => {
 
 export const GrievancePage: React.FC = () => (
   <div className="max-w-3xl mx-auto px-4 md:px-8 py-12 md:py-16 space-y-6">
-    <SeoHead
-      title="Grievance Redressal | ERAMORA"
-      description="Contact ERAMORA's grievance officer for assistance with a complaint."
-      canonicalPath="/grievance-redressal"
-    />
+    <SeoHead {...SEO_PAGES.grievance} />
     <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">Customer Assistance</p>
     <h1 className="font-serif text-4xl text-[#2C1E16] border-b border-[#2C1E16]/12 pb-6">
       Grievance Redressal

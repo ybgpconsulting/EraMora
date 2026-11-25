@@ -1,67 +1,7 @@
 import React from 'react';
-import { ArrowUpRight, Phone, Mail, Instagram, Globe } from 'lucide-react';
-import { useStore } from '../context/StoreContext';
+import { ArrowUpRight } from 'lucide-react';
 import { YBGP_CONFIG, buildYbgpProjectEnquiryUrl } from '../utils/ybgp';
 import { WhatsAppIcon } from './WhatsAppIcon';
-
-/**
- * Standard fixed YBGP Attribution Banner.
- * Appears fixed at the bottom of the viewport on all intended public pages.
- * Excluded from Admin Dashboard and Checkout per master instructions.
- */
-export const YbgpAttributionBanner: React.FC = () => {
-  const { path } = useStore();
-
-  // Exclude from admin dashboard and checkout flow per master instruction rule 8
-  if (path.startsWith('/admin') || path.startsWith('/checkout')) {
-    return null;
-  }
-
-  const isPDP = path.startsWith('/product/');
-
-  return (
-    <aside
-      aria-label="Website developer attribution"
-      className={`fixed z-35 transition-all duration-300 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] md:w-[min(calc(100%-32px),980px)] ${
-        isPDP
-          ? 'bottom-[calc(env(safe-area-inset-bottom)+138px)] md:bottom-[calc(env(safe-area-inset-bottom)+16px)]'
-          : 'bottom-[calc(env(safe-area-inset-bottom)+76px)] md:bottom-[calc(env(safe-area-inset-bottom)+16px)]'
-      }`}
-    >
-      <a
-        href={YBGP_CONFIG.website}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Looking to grow your business? Designed and developed by YBGP. Visit ybgp.in (opens in new tab)"
-        className="group flex items-center justify-between gap-3 sm:gap-4 rounded-[20px] bg-[#062F22] hover:bg-[#083829] px-4 py-3 md:px-6 md:py-3.5 text-white shadow-[0_16px_45px_-12px_rgba(0,0,0,0.45)] border border-emerald-900/50 backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF7F2]"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] sm:text-[14px] md:text-[15px] font-bold tracking-tight text-white leading-tight">
-            {YBGP_CONFIG.bannerHeadline}
-          </p>
-          <p className="mt-0.5 text-[11px] sm:text-[12px] md:text-[13px] font-normal text-white/80 leading-tight">
-            {YBGP_CONFIG.bannerSubline}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          <div className="rounded-[14px] bg-white px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 shadow-xs transition-transform duration-300 group-hover:scale-[1.03] flex items-center justify-center">
-            <img
-              src={YBGP_CONFIG.logoPath}
-              alt="YBGP"
-              className="h-5 sm:h-6 md:h-7 w-[84px] sm:w-[98px] md:w-[124px] object-contain"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-          <span className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors group-hover:bg-white/20 group-hover:text-white">
-            <ArrowUpRight className="h-4 w-4" />
-          </span>
-        </div>
-      </a>
-    </aside>
-  );
-};
 
 /**
  * YBGP Footer Attribution & Project Enquiry Card.
@@ -75,8 +15,8 @@ export const YbgpFooterAttribution: React.FC = () => {
       href={enquiryUrl}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${YBGP_CONFIG.bannerHeadline} Contact YBGP about a project like ${YBGP_CONFIG.defaultProjectName}.`}
-      className="group ml-auto mr-0 flex min-h-[68px] w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#062F22] px-4 py-3 text-white shadow-lg transition-colors hover:bg-[#083b2b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241811] sm:px-4"
+      aria-label={`${YBGP_CONFIG.bannerHeadline} Enquire with YBGP on WhatsApp about a project like ${YBGP_CONFIG.defaultProjectName}.`}
+      className="group ml-auto mr-0 flex min-h-[76px] w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#062F22] px-4 py-3 text-white shadow-lg transition-colors hover:bg-[#083b2b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241811] sm:px-4"
     >
       <span className="min-w-0">
         <span className="block text-[12px] font-semibold leading-snug">
@@ -84,6 +24,10 @@ export const YbgpFooterAttribution: React.FC = () => {
         </span>
         <span className="mt-1 block text-[11px] leading-snug text-white/75">
           {YBGP_CONFIG.bannerSubline}
+        </span>
+        <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#E4C77D]">
+          Enquire on WhatsApp
+          <ArrowUpRight aria-hidden="true" className="h-3 w-3" />
         </span>
       </span>
       <span className="flex h-10 w-20 shrink-0 items-center justify-center rounded-lg bg-white px-2.5 py-2">

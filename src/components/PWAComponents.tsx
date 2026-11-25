@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Download, Share, WifiOff, X } from 'lucide-react';
 import { useOnlineStatus, usePWAInstall } from '../hooks/usePWAInstall';
+import { useModalFocus } from '../hooks/useModalFocus';
 
 export const PWAInstallPrompt: React.FC = () => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
@@ -8,6 +9,7 @@ export const PWAInstallPrompt: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [installError, setInstallError] = useState(false);
+  const guideDialogRef = useModalFocus<HTMLDivElement>(showGuide, () => setShowGuide(false));
 
   useEffect(() => {
     if (isInstalled || (!isInstallable && !isIOS)) {
@@ -98,6 +100,8 @@ export const PWAInstallPrompt: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="Install ERAMORA on iOS"
+          ref={guideDialogRef}
+          tabIndex={-1}
           className="fixed inset-0 z-[70] flex items-center justify-center bg-[#2C1E16]/60 p-4 backdrop-blur-xs"
         >
           <div className="w-full max-w-sm border border-[#2C1E16]/15 bg-[#FAF7F2] p-6 shadow-xl">
@@ -107,7 +111,7 @@ export const PWAInstallPrompt: React.FC = () => {
                 type="button"
                 onClick={() => setShowGuide(false)}
                 aria-label="Close installation guide"
-                className="p-1 text-[#6B584C] hover:text-[#2C1E16]"
+                className="h-11 w-11 flex items-center justify-center text-[#6B584C] hover:text-[#2C1E16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352]"
               >
                 <X className="h-4 w-4" />
               </button>

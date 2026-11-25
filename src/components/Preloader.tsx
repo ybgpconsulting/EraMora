@@ -3,9 +3,9 @@ import { BrandLogo } from './BrandLogo';
 
 const STORAGE_KEY = 'eramora:entered-atelier:v2';
 
-const MIN_DURATION = 900;
-const MAX_DURATION = 1500;
-const FADE_MS = 520;
+const MIN_DURATION = 400;
+const MAX_DURATION = 1100;
+const FADE_MS = 280;
 
 function isFirstVisit() {
   try {

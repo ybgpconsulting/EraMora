@@ -58,7 +58,7 @@ test('versioned startup migration preserves catalogue edits and administrator da
   assert.equal(migrated.products[0].name, 'Administrator-edited name');
   assert.equal(migrated.products[0].variants[0].price, 2500);
   assert.equal(migrated.products[0].variants[0].stock, 7);
-  assert.equal(migrated.products[0].images[0], '/brand/eramora/campaigns/fragrance-art.jpg');
+  assert.equal(migrated.products[0].images[0], '/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg');
   assert.equal(migrated.categories[0].name, 'Edited category');
   assert.equal(migrated.categories[0].image, '/brand/eramora/campaigns/brand-introduction.jpg');
   assert.equal(migrated.banners.heroImage, '/brand/eramora/campaigns/brand-introduction.jpg');

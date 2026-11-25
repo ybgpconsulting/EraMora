@@ -15,6 +15,7 @@ import {
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { formatINR } from '../utils/commerce';
+import { SEO_PAGES } from '../utils/seo';
 import type {
   BannerConfig,
   BusinessSettings,
@@ -142,7 +143,7 @@ export const AdminDashboardPage: React.FC = () => {
   if (!user || user.role !== 'admin') {
     return (
       <div className="max-w-md mx-auto px-4 py-14">
-        <SeoHead title="Admin Portal | ERAMORA" description="ERAMORA Atelier Management Portal" noIndex />
+        <SeoHead {...SEO_PAGES.admin} />
         <div className="p-7 bg-[#F4EFE6]/75 border border-[#2C1E16]/15 space-y-5">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-[#B89352]">Atelier Operations</p>
@@ -167,7 +168,7 @@ export const AdminDashboardPage: React.FC = () => {
                 autoComplete="username"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3.5 py-2.5 text-sm"
+                className="w-full min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/20 px-3.5 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352]"
               />
             </div>
             <div>
@@ -181,20 +182,20 @@ export const AdminDashboardPage: React.FC = () => {
                 autoComplete="current-password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3.5 py-2.5 text-sm"
+                className="w-full min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/20 px-3.5 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352]"
               />
             </div>
             <button
               type="submit"
               disabled={loggingIn}
-              className="w-full bg-[#2C1E16] text-[#FAF7F2] py-3 text-xs uppercase tracking-[0.16em] cursor-pointer"
+              className="w-full min-h-11 bg-[#2C1E16] text-[#FAF7F2] py-3 text-xs uppercase tracking-[0.16em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] disabled:cursor-wait disabled:opacity-70 cursor-pointer"
             >
               {loggingIn ? 'Signing In...' : 'Enter Dashboard'}
             </button>
           </form>
 
           <div className="pt-4 border-t border-[#2C1E16]/10 flex items-center justify-end text-xs text-[#6B584C]">
-            <button type="button" onClick={() => navigate('/')} className="hover:text-[#2C1E16] cursor-pointer">
+            <button type="button" onClick={() => navigate('/')} className="min-h-11 hover:text-[#2C1E16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer">
               Back to Store
             </button>
           </div>
@@ -396,7 +397,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 pb-20">
-      <SeoHead title="Admin Dashboard | ERAMORA" description="ERAMORA store operations" noIndex />
+      <SeoHead {...SEO_PAGES.admin} />
 
       {/* Top Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2C1E16]/12 pb-5 mb-6">

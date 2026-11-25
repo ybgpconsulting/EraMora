@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { ERAMORA_FAQS } from '../content/faqs';
 import type { Product } from '../types/store';
-import { canonicalUrl, createProductStructuredData } from './seo';
+import {
+  canonicalUrl,
+  createFaqStructuredData,
+  createProductStructuredData,
+  getProductSeoDescription,
+} from './seo';
 
 const product: Product = {
   id: 'product-1',
@@ -41,9 +47,27 @@ test('product structured data describes every variant without publishing showcas
   assert.equal(breadcrumbs['@type'], 'BreadcrumbList');
 
   const publishedProduct = createProductStructuredData({ ...product, isShowcaseDemo: false })[0];
-  assert.deepEqual(publishedProduct.aggregateRating, {
-    '@type': 'AggregateRating',
-    ratingValue: 4.8,
-    reviewCount: 12,
-  });
+  assert.equal(publishedProduct.aggregateRating, undefined);
+});
+
+test('product SEO descriptions fall back without inventing product attributes', () => {
+  assert.equal(
+    getProductSeoDescription({
+      name: 'Saffron Noir',
+      seoDescription: '  ',
+      description: '',
+      subtitle: '',
+    }),
+    'Explore Saffron Noir from ERAMORA. Contact our WhatsApp concierge to confirm current details and availability.'
+  );
+});
+
+test('FAQ structured data mirrors the published FAQ content', () => {
+  const schema = createFaqStructuredData(ERAMORA_FAQS);
+  const questions = schema.mainEntity as Array<{ name: string; acceptedAnswer: { text: string } }>;
+
+  assert.equal(schema['@type'], 'FAQPage');
+  assert.equal(questions.length, ERAMORA_FAQS.length);
+  assert.equal(questions[0].name, ERAMORA_FAQS[0].question);
+  assert.equal(questions[0].acceptedAnswer.text, ERAMORA_FAQS[0].answer);
 });

@@ -5,6 +5,7 @@ dev-dist/
 coverage/
 .wrangler/
 .dev.vars
+.prod.secrets
 .DS_Store
 *.log
 .env*

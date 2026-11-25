@@ -2,6 +2,7 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { ProductCard } from '../components/ProductCard';
+import { SEO_PAGES } from '../utils/seo';
 
 export const WishlistPage: React.FC = () => {
   const { products, wishlist, navigate } = useStore();
@@ -9,12 +10,7 @@ export const WishlistPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-14">
-      <SeoHead
-        title="Wishlist | ERAMORA"
-        description="Your saved ERAMORA fragrances and scented candles."
-        canonicalPath="/wishlist"
-        noIndex
-      />
+      <SeoHead {...SEO_PAGES.wishlist} />
 
       <div className="border-b border-[#2C1E16]/12 pb-6 mb-8">
         <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">Saved Selections</p>

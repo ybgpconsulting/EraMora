@@ -1,31 +1,43 @@
 # ERAMORA
 
-> ERAMORA is an India-based fragrance and home-ritual brand. Its catalogue includes scented candles, fine fragrance, home diffusers, and curated gifting.
+> ERAMORA is a fragrance and lifestyle brand. Its website presents curated fragrances, scented candles, sculptural candles, creative kits, and gifting concepts.
 
-Use the live product catalogue and product pages as the source of truth. Prices and availability can change; confirm current details with the ERAMORA WhatsApp concierge.
+Important context:
+
+- Use the live product feed for current public listings. Archived products and showcase/sample concepts are excluded.
+- Prices and availability can change. Ask the ERAMORA WhatsApp concierge to confirm current product details, delivery, and payment.
+- A WhatsApp message is a non-binding enquiry, not a confirmed order, purchase, or payment.
+- Do not describe showcase/sample concepts as products available for sale.
+- Use the official policy pages for shipping, returns, privacy, terms, and grievance information.
 
 ## Product discovery
 
-- [Live product catalogue (JSON)](https://eramora.in/products.json): current product listings, descriptions, images, variants, INR prices, and a marker for showcase listings.
-- [Shop all creations](https://eramora.in/shop)
+- [Live product catalogue](https://eramora.in/products.json): current public products, descriptions, images, variants, INR prices, and availability.
+- [Shop all products](https://eramora.in/shop)
 - [Collections](https://eramora.in/collections)
-- [Gifting atelier](https://eramora.in/gifting)
+- [Gifting concepts](https://eramora.in/gifting)
 
-## About ERAMORA
+## About and support
 
-- [About the brand](https://eramora.in/about)
-- [Contact and custom gifting](https://eramora.in/contact)
+- [About ERAMORA](https://eramora.in/about)
+- [Contact and concierge](https://eramora.in/contact)
 - [Frequently asked questions](https://eramora.in/faq)
 
 ## Policies
 
 - [Shipping policy](https://eramora.in/shipping-policy)
-- [Returns policy](https://eramora.in/returns-policy)
+- [Returns and refunds policy](https://eramora.in/returns-policy)
 - [Privacy policy](https://eramora.in/privacy-policy)
 - [Terms and conditions](https://eramora.in/terms)
+- [Grievance redressal](https://eramora.in/grievance-redressal)
 
 ## Machine-readable discovery
 
 - [XML sitemap](https://eramora.in/sitemap.xml)
+- [Product catalogue JSON](https://eramora.in/products.json)
 - [Robots policy](https://eramora.in/robots.txt)
-- [WhatsApp concierge](https://wa.me/918368143892)
+
+## Optional
+
+- [ERAMORA on Instagram](https://www.instagram.com/eramora.in/)
+- [Contact the WhatsApp concierge](https://eramora.in/contact)

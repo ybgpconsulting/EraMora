@@ -5,6 +5,7 @@ import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
+import { SEO_PAGES } from '../utils/seo';
 
 type ShowcaseTab = 'featured' | 'fragrance' | 'candles' | 'sculptural' | 'diy' | 'gifting';
 
@@ -34,11 +35,7 @@ export const CollectionsPage: React.FC = () => {
 
   return (
     <div className="bg-[#FAF7F2]">
-      <SeoHead
-        title="The Collections | ERAMORA"
-        description="Explore ERAMORA collections: curated fragrances, scented candles, sculptural candles, DIY colouring kits and gifting."
-        canonicalPath="/collections"
-      />
+      <SeoHead {...SEO_PAGES.collections} />
 
       <section className="relative h-[46svh] min-h-[340px] overflow-hidden md:h-[56svh]">
         <img src={HERO_IMAGE} alt="ERAMORA candle ritual on travertine with brass trimmer" className="absolute inset-0 h-full w-full object-cover" />
@@ -111,18 +108,17 @@ export const CollectionsPage: React.FC = () => {
             </div>
 
             <div
-              role="tablist"
-              aria-label="Collection filters"
+              role="group"
+              aria-label="Filter signature collection"
               className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0"
             >
               {TABS.map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
-                  role="tab"
-                  aria-selected={activeTab === key}
+                  aria-pressed={activeTab === key}
                   onClick={() => setActiveTab(key)}
-                  className={`whitespace-nowrap border px-3.5 py-2 text-[9px] uppercase tracking-[0.2em] transition-colors cursor-pointer ${
+                  className={`min-h-11 whitespace-nowrap border px-3.5 py-2 text-[9px] uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer ${
                     activeTab === key
                       ? 'border-[#2C1E16] bg-[#2C1E16] text-[#FAF7F2]'
                       : 'border-[#2C1E16]/12 text-[#6B584C] hover:border-[#2C1E16]/40 hover:text-[#2C1E16]'

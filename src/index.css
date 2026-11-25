@@ -101,26 +101,6 @@
 }
 
 /* ---------- Motion ---------- */
-@keyframes marquee {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-.marquee-track {
-  display: inline-flex;
-  min-width: 200%;
-  animation: marquee 46s linear infinite;
-  will-change: transform;
-}
-
-.marquee-track:hover {
-  animation-play-state: paused;
-}
-
 @keyframes scroll-cue {
   0% {
     transform: scaleY(0);
@@ -237,7 +217,6 @@
     scroll-behavior: auto;
   }
 
-  .marquee-track,
   .scroll-cue,
   .splash-in,
   .animate-drawer-in,
@@ -258,5 +237,30 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  .home-hero-image,
+  .home-scroll-image {
+    transform: none !important;
+  }
+
+  .home-scroll-chapter {
+    height: auto !important;
+  }
+
+  .home-scroll-stage {
+    position: relative !important;
+    top: auto !important;
+    height: auto !important;
+    min-height: calc(100svh - var(--nav-h));
+  }
+
+  .home-scroll-content {
+    min-height: calc(100svh - var(--nav-h));
+  }
+
+  .home-scroll-copy {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

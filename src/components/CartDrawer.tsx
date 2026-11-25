@@ -3,6 +3,7 @@ import { Gift, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { ImageWithFallback } from './ImageWithFallback';
 import { WhatsAppIcon } from './WhatsAppIcon';
+import { useModalFocus } from '../hooks/useModalFocus';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -18,6 +19,7 @@ export const CartDrawer: React.FC = () => {
     setGiftMessage,
     navigate,
   } = useStore();
+  const dialogRef = useModalFocus<HTMLDivElement>(isCartOpen, () => setIsCartOpen(false));
 
   if (!isCartOpen) return null;
 
@@ -29,6 +31,9 @@ export const CartDrawer: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-label="Shopping Bag"
+      id="cart-drawer"
+      ref={dialogRef}
+      tabIndex={-1}
       className="fixed inset-0 z-50 flex justify-end bg-[#2C1E16]/50 backdrop-blur-xs"
       onClick={() => setIsCartOpen(false)}
     >
@@ -46,7 +51,7 @@ export const CartDrawer: React.FC = () => {
             type="button"
             onClick={() => setIsCartOpen(false)}
             aria-label="Close shopping bag"
-            className="min-w-[36px] min-h-[36px] flex items-center justify-center text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
+            className="h-11 w-11 flex items-center justify-center text-[#6B584C] hover:text-[#2C1E16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -107,7 +112,7 @@ export const CartDrawer: React.FC = () => {
                         type="button"
                         onClick={() => removeFromCart(item.productId, item.variantId)}
                         aria-label={`Remove ${item.name} from bag`}
-                        className="p-1 text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
+                        className="h-11 w-11 -mr-2 flex shrink-0 items-center justify-center text-[#6B584C] hover:text-[#2C1E16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -119,7 +124,7 @@ export const CartDrawer: React.FC = () => {
                           type="button"
                           onClick={() => updateCartQuantity(item.productId, item.variantId, item.quantity - 1)}
                           aria-label={`Decrease quantity of ${item.name}`}
-                          className="w-7 h-7 flex items-center justify-center text-[#2C1E16] hover:bg-[#F4EFE6] cursor-pointer"
+                          className="h-11 w-11 flex items-center justify-center text-[#2C1E16] hover:bg-[#F4EFE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
@@ -128,7 +133,7 @@ export const CartDrawer: React.FC = () => {
                           type="button"
                           onClick={() => updateCartQuantity(item.productId, item.variantId, item.quantity + 1)}
                           aria-label={`Increase quantity of ${item.name}`}
-                          className="w-7 h-7 flex items-center justify-center text-[#2C1E16] hover:bg-[#F4EFE6] cursor-pointer"
+                          className="h-11 w-11 flex items-center justify-center text-[#2C1E16] hover:bg-[#F4EFE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
                         </button>

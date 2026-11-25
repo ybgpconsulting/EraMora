@@ -21,11 +21,15 @@ import {
   type RequestContext,
 } from './http';
 import { DEFAULT_ADMIN_HASH, hashPassword, verifyPassword } from './seed';
+import { ERAMORA_FAQS } from '../src/content/faqs';
 import {
   absolutePublicUrl,
-  CANONICAL_SITE_URL,
   canonicalUrl,
+  createFaqStructuredData,
   createProductStructuredData,
+  getProductSeoDescription,
+  SEO_PAGES,
+  type PageSeoMetadata,
 } from '../src/utils/seo';
 import type {
   Category,
@@ -539,113 +543,30 @@ router.put('/api/admin/settings', requireAdmin, async (req, res) => {
 });
 
 // ---------- SITEMAP, MEDIA, ASSETS ----------
-interface SeoMetadata {
-  title: string;
-  description: string;
-  canonicalPath: string;
+interface SeoMetadata extends PageSeoMetadata {
   image?: string;
-  noIndex?: boolean;
   productPage?: boolean;
-  structuredData?: Array<Record<string, unknown>>;
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
 }
 
 const PAGE_SEO: Record<string, SeoMetadata> = {
-  '/': {
-    title: 'ERAMORA — Where Fragrance Meets Emotion | Luxury Candles & Perfume',
-    description:
-      "Explore ERAMORA's curated fragrances, candles and gifting. Where fragrance meets emotion—make every moment memorable.",
-    canonicalPath: '/',
-  },
-  '/collections': {
-    title: 'The Collections | ERAMORA',
-    description:
-      'Explore ERAMORA collections: curated fragrances, scented candles, sculptural candles, DIY colouring kits and gifting.',
-    canonicalPath: '/collections',
-  },
-  '/gifting': {
-    title: 'The Gifting Atelier | ERAMORA',
-    description:
-      'Wedding, corporate and personal fragrance gifting enquiries by ERAMORA.',
-    canonicalPath: '/gifting',
-  },
-  '/shop': {
-    title: 'Shop All Creations | ERAMORA',
-    description:
-      'Explore ERAMORA curated fragrances, scented candles, sculptural candles, DIY colouring kits and gifting.',
-    canonicalPath: '/shop',
-  },
-  '/about': {
-    title: 'About ERAMORA — Where Fragrance Meets Emotion',
-    description: "Discover ERAMORA's philosophy of emotional fragrance, quiet craftsmanship, and meaningful gifting.",
-    canonicalPath: '/about',
-  },
-  '/contact': {
-    title: 'Contact & Custom Gifting | ERAMORA',
-    description:
-      'Reach ERAMORA concierge for product advice, order support, or bespoke wedding & corporate gifting.',
-    canonicalPath: '/contact',
-  },
-  '/account': {
-    title: 'Contact & Custom Gifting | ERAMORA',
-    description:
-      'Reach ERAMORA concierge for product advice, order support, or bespoke wedding & corporate gifting.',
-    canonicalPath: '/contact',
-  },
-  '/faq': {
-    title: 'Frequently Asked Questions | ERAMORA',
-    description: 'Answers on ERAMORA demo catalogue items, WhatsApp enquiries and gifting concierge.',
-    canonicalPath: '/faq',
-  },
-  '/shipping-policy': {
-    title: 'Shipping Policy | ERAMORA',
-    description: 'Read the ERAMORA shipping policy.',
-    canonicalPath: '/shipping-policy',
-  },
-  '/returns-policy': {
-    title: 'Returns Policy | ERAMORA',
-    description: 'Read the ERAMORA returns policy.',
-    canonicalPath: '/returns-policy',
-  },
-  '/privacy-policy': {
-    title: 'Privacy Policy | ERAMORA',
-    description: 'Read the ERAMORA privacy policy.',
-    canonicalPath: '/privacy-policy',
-  },
-  '/terms': {
-    title: 'Terms & Conditions | ERAMORA',
-    description: 'Read the ERAMORA terms and conditions.',
-    canonicalPath: '/terms',
-  },
-  '/grievance-redressal': {
-    title: 'Grievance Redressal | ERAMORA',
-    description: "Contact ERAMORA's grievance officer for assistance with a complaint.",
-    canonicalPath: '/grievance-redressal',
-  },
-  '/cart': {
-    title: 'Shopping Bag | ERAMORA',
-    description: 'Review your ERAMORA selection and book directly with our WhatsApp concierge.',
-    canonicalPath: '/cart',
-    noIndex: true,
-  },
-  '/checkout': {
-    title: 'Checkout | ERAMORA',
-    description:
-      'Send your ERAMORA order request to our WhatsApp concierge. No customer account or online payment is required.',
-    canonicalPath: '/checkout',
-    noIndex: true,
-  },
-  '/wishlist': {
-    title: 'Wishlist | ERAMORA',
-    description: 'Your saved ERAMORA fragrances and scented candles.',
-    canonicalPath: '/wishlist',
-    noIndex: true,
-  },
-  '/admin': {
-    title: 'Admin Portal | ERAMORA',
-    description: 'ERAMORA Atelier Management Portal',
-    canonicalPath: '/admin',
-    noIndex: true,
-  },
+  '/': SEO_PAGES.home,
+  '/collections': SEO_PAGES.collections,
+  '/gifting': SEO_PAGES.gifting,
+  '/shop': SEO_PAGES.shop,
+  '/about': SEO_PAGES.about,
+  '/contact': SEO_PAGES.contact,
+  '/account': { ...SEO_PAGES.contact, canonicalPath: '/contact' },
+  '/faq': { ...SEO_PAGES.faq, structuredData: createFaqStructuredData(ERAMORA_FAQS) },
+  '/shipping-policy': SEO_PAGES.shippingPolicy,
+  '/returns-policy': SEO_PAGES.returnsPolicy,
+  '/privacy-policy': SEO_PAGES.privacyPolicy,
+  '/terms': SEO_PAGES.terms,
+  '/grievance-redressal': SEO_PAGES.grievance,
+  '/cart': SEO_PAGES.cart,
+  '/checkout': SEO_PAGES.checkout,
+  '/wishlist': SEO_PAGES.wishlist,
+  '/admin': SEO_PAGES.admin,
 };
 
 function renderSeoHtml(response: Response, metadata: SeoMetadata): Response {
@@ -736,20 +657,9 @@ function xmlEscape(value: string): string {
 
 function renderSitemap(): Response {
   const db = getDb();
-  const staticPaths = [
-    '/',
-    '/collections',
-    '/gifting',
-    '/shop',
-    '/about',
-    '/contact',
-    '/faq',
-    '/shipping-policy',
-    '/returns-policy',
-    '/privacy-policy',
-    '/terms',
-    '/grievance-redressal',
-  ];
+  const staticPaths = Object.values(SEO_PAGES)
+    .filter((page) => !('noIndex' in page && page.noIndex))
+    .map((page) => page.canonicalPath);
   const urls = [
     ...staticPaths.map(
       (path) => `<url><loc>${xmlEscape(canonicalUrl(path))}</loc><changefreq>weekly</changefreq></url>`
@@ -784,7 +694,7 @@ function renderProductFeed(): Response {
       slug: product.slug,
       url: canonicalUrl(`/product/${encodeURIComponent(product.slug)}`),
       category: product.categoryName,
-      description: product.description || product.subtitle,
+      description: getProductSeoDescription(product),
       images: product.images
         .map((image) => absolutePublicUrl(image))
         .filter((image): image is string => Boolean(image)),
@@ -1049,7 +959,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       }
       metadata = {
         title: product.seoTitle || `${product.name} | ERAMORA`,
-        description: product.seoDescription || product.subtitle || product.description,
+        description: getProductSeoDescription(product),
         canonicalPath: `/product/${encodeURIComponent(product.slug)}`,
         image: product.images[0],
         productPage: true,

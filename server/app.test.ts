@@ -262,6 +262,9 @@ test('public product feed and sitemap exclude demo and archived products', async
   const sitemap = await sitemapResponse.text();
   assert.equal(sitemapResponse.status, 200);
   assert.ok(sitemap.includes('https://eramora.in/product/approved-fragrance'));
+  assert.ok(sitemap.includes('https://eramora.in/faq'));
+  assert.ok(sitemap.includes('https://eramora.in/grievance-redressal'));
+  assert.ok(!sitemap.includes('?category='));
   assert.ok(!sitemap.includes('saffron-noir'));
   assert.ok(!sitemap.includes('archived-item'));
 

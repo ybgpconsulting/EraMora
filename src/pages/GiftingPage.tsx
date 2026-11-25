@@ -6,6 +6,7 @@ import { ImageWithFallback } from '../components/ImageWithFallback';
 import { Reveal } from '../components/Reveal';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { buildGeneralWhatsAppUrl } from '../utils/commerce';
+import { SEO_PAGES } from '../utils/seo';
 
 const IMG = {
   coffret: '/src/assets/images/product_gift_coffret_luxury_1794827351996.jpg',
@@ -49,11 +50,7 @@ export const GiftingPage: React.FC = () => {
 
   return (
     <div className="bg-[#FAF7F2]">
-      <SeoHead
-        title="The Gifting Atelier | ERAMORA"
-        description="Wedding, corporate and personal fragrance gifting enquiries by ERAMORA — explore thoughtful coffrets and custom presentation."
-        canonicalPath="/gifting"
-      />
+      <SeoHead {...SEO_PAGES.gifting} />
 
       <section className="mx-auto max-w-7xl px-5 pt-10 md:px-10 md:pt-16">
         <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-14">
@@ -74,7 +71,7 @@ export const GiftingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/contact?topic=custom_gifting')}
-                className="group inline-flex items-center gap-3 bg-[#2C1E16] px-7 py-3.5 text-[10px] uppercase tracking-[0.26em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] cursor-pointer"
+                className="group inline-flex min-h-11 items-center gap-3 bg-[#2C1E16] px-7 py-3.5 text-[10px] uppercase tracking-[0.26em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] cursor-pointer"
               >
                 Request custom gifting
                 <ArrowUpRight className="h-3.5 w-3.5 text-[#C5A059] transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -83,7 +80,7 @@ export const GiftingPage: React.FC = () => {
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 border border-[#2C1E16]/20 px-5 py-3.5 text-[10px] uppercase tracking-[0.22em] text-[#2C1E16] transition-colors hover:border-[#B89352]"
+                className="inline-flex min-h-11 items-center gap-2 border border-[#2C1E16]/20 px-5 py-3.5 text-[10px] uppercase tracking-[0.22em] text-[#2C1E16] transition-colors hover:border-[#B89352]"
               >
                 <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
                 WhatsApp
@@ -145,8 +142,8 @@ export const GiftingPage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => navigate('/shop?category=gift-sets')}
-              className="group inline-flex items-center gap-2 self-start text-[10px] uppercase tracking-[0.24em] text-[#2C1E16] md:self-auto cursor-pointer"
+              onClick={() => navigate('/shop?category=gifting')}
+              className="group inline-flex min-h-11 items-center gap-2 self-start text-[10px] uppercase tracking-[0.24em] text-[#2C1E16] md:self-auto cursor-pointer"
             >
               Shop gift coffrets
               <ArrowUpRight className="h-3.5 w-3.5 text-[#B89352]" />
@@ -181,7 +178,7 @@ export const GiftingPage: React.FC = () => {
         <Reveal>
           <p className="luxe-eyebrow text-[#B89352]">Bespoke Commissions</p>
           <h2 className="mt-4 text-balance font-serif text-3xl leading-[1.1] md:text-5xl">
-            Tell us the occasion. We will compose the scent.
+            Tell us the occasion. We’ll explore what’s possible.
           </h2>
           <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-[#6B584C]">
             Ask the concierge about minimum quantities, samples, presentation, and availability. Details are confirmed
@@ -191,14 +188,14 @@ export const GiftingPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/contact?topic=custom_gifting')}
-              className="bg-[#2C1E16] px-8 py-3.5 text-[10px] uppercase tracking-[0.26em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] cursor-pointer"
+              className="min-h-11 bg-[#2C1E16] px-8 py-3.5 text-[10px] uppercase tracking-[0.26em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] cursor-pointer"
             >
               Speak to concierge
             </button>
             <button
               type="button"
               onClick={() => navigate('/about')}
-              className="border border-[#2C1E16]/20 px-7 py-3.5 text-[10px] uppercase tracking-[0.22em] text-[#2C1E16] transition-colors hover:border-[#B89352] cursor-pointer"
+              className="min-h-11 border border-[#2C1E16]/20 px-7 py-3.5 text-[10px] uppercase tracking-[0.22em] text-[#2C1E16] transition-colors hover:border-[#B89352] cursor-pointer"
             >
               Our philosophy
             </button>

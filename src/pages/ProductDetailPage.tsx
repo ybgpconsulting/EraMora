@@ -15,8 +15,10 @@ import {
   buildProductWhatsAppUrl,
   formatINR,
 } from '../utils/commerce';
-import { canonicalUrl, createProductStructuredData } from '../utils/seo';
+import { getProductImage } from '../utils/catalogue';
+import { canonicalUrl, createProductStructuredData, getProductSeoDescription } from '../utils/seo';
 import type { Product } from '../types/store';
+import { useModalFocus } from '../hooks/useModalFocus';
 
 interface ProductDetailPageProps {
   slug: string;
@@ -45,6 +47,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [waEnquiryNote, setWaEnquiryNote] = useState('');
+  const zoomDialogRef = useModalFocus<HTMLDivElement>(zoomOpen, () => setZoomOpen(false));
 
   useEffect(() => {
     setLoading(true);
@@ -148,9 +151,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 pb-44 md:pb-16">
       <SeoHead
         title={product.seoTitle || `${product.name} | ERAMORA`}
-        description={product.seoDescription || product.subtitle || product.description}
+        description={getProductSeoDescription(product)}
         canonicalPath={`/product/${encodeURIComponent(product.slug)}`}
-        image={product.images[0]}
+        image={getProductImage(product)}
         noIndex={product.isShowcaseDemo}
         structuredData={productSchema}
       />
@@ -174,7 +177,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
         <div className="lg:col-span-6 space-y-3 lg:sticky lg:top-24">
           <div className="relative aspect-[4/3] bg-[#F4EFE6] border border-[#2C1E16]/10 overflow-hidden">
             <ImageWithFallback
-              src={product.images[activeImgIdx] || product.images[0]}
+              src={getProductImage(product, activeImgIdx)}
               alt={`${product.name} — view ${activeImgIdx + 1}`}
               loading="eager"
               className="w-full h-full object-cover"
@@ -183,7 +186,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               type="button"
               onClick={() => setZoomOpen(true)}
               aria-label="Zoom product photograph"
-              className="absolute bottom-3 right-3 min-w-[38px] min-h-[38px] px-3 bg-[#FAF7F2]/90 border border-[#2C1E16]/15 inline-flex items-center gap-1.5 text-xs text-[#2C1E16] hover:bg-[#FAF7F2] cursor-pointer"
+              className="absolute bottom-3 right-3 min-w-11 min-h-11 px-3 bg-[#FAF7F2]/90 border border-[#2C1E16]/15 inline-flex items-center gap-1.5 text-xs text-[#2C1E16] hover:bg-[#FAF7F2] cursor-pointer"
             >
               <ZoomIn className="w-3.5 h-3.5" />
               <span>Zoom</span>
@@ -202,7 +205,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     activeImgIdx === i ? 'border-[#2C1E16]' : 'border-[#2C1E16]/15 opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <ImageWithFallback src={img} alt="" className="w-full h-full object-cover" />
+                  <ImageWithFallback src={getProductImage(product, i)} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -259,7 +262,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                     setSelectedVariantId(v.id);
                     setQuantity(1);
                   }}
-                  className={`px-4 py-2.5 text-xs font-medium border transition-colors cursor-pointer ${
+                  className={`min-h-11 px-4 py-2.5 text-xs font-medium border transition-colors cursor-pointer ${
                     v.id === activeVariant.id
                       ? 'bg-[#2C1E16] text-[#FAF7F2] border-[#2C1E16]'
                       : 'border-[#2C1E16]/20 text-[#2C1E16] hover:border-[#B89352]'
@@ -338,7 +341,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               onChange={(e) => setWaEnquiryNote(e.target.value)}
               placeholder="Optional note (e.g., ask about presentation or product details)..."
               aria-label="WhatsApp enquiry note"
-              className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
+              className="w-full min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
             />
             <a
               href={waUrl}
@@ -503,6 +506,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           role="dialog"
           aria-modal="true"
           aria-label="Product Photograph Zoom"
+          ref={zoomDialogRef}
+          tabIndex={-1}
           className="fixed inset-0 z-50 bg-[#2C1E16]/85 flex items-center justify-center p-4"
           onClick={() => setZoomOpen(false)}
         >
@@ -510,7 +515,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
             type="button"
             onClick={() => setZoomOpen(false)}
             aria-label="Close zoom view"
-            className="absolute top-5 right-5 w-10 h-10 bg-[#FAF7F2] text-[#2C1E16] flex items-center justify-center cursor-pointer"
+            className="absolute top-5 right-5 h-11 w-11 bg-[#FAF7F2] text-[#2C1E16] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

@@ -12,6 +12,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["worker.ts", "server/**/*.ts", "src/types/store.ts", "src/utils/commerce.ts"],
+  "include": ["worker-configuration.d.ts", "worker.ts", "server/**/*.ts", "src/types/store.ts", "src/utils/commerce.ts"],
   "exclude": ["server/**/*.test.ts", "dist", "node_modules"]
 }

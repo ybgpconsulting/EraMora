@@ -5,6 +5,7 @@ import { SeoHead } from '../components/SeoHead';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { buildCartWhatsAppUrl } from '../utils/commerce';
+import { SEO_PAGES } from '../utils/seo';
 
 export const CartPage: React.FC = () => {
   const {
@@ -33,12 +34,7 @@ export const CartPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-14">
-      <SeoHead
-        title="Shopping Bag | ERAMORA"
-        description="Review your ERAMORA selection and book directly with our WhatsApp concierge."
-        canonicalPath="/cart"
-        noIndex
-      />
+      <SeoHead {...SEO_PAGES.cart} />
 
       <h1 className="font-serif text-4xl text-[#2C1E16] border-b border-[#2C1E16]/12 pb-6 mb-8">
         Your Shopping Bag
@@ -88,7 +84,7 @@ export const CartPage: React.FC = () => {
                       type="button"
                       onClick={() => removeFromCart(item.productId, item.variantId)}
                       aria-label={`Remove ${item.name}`}
-                      className="p-1.5 text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
+                      className="min-h-11 min-w-11 flex items-center justify-center text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -100,7 +96,7 @@ export const CartPage: React.FC = () => {
                         type="button"
                         onClick={() => updateCartQuantity(item.productId, item.variantId, item.quantity - 1)}
                         aria-label={`Decrease ${item.name} quantity`}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-[#F4EFE6] cursor-pointer"
+                        className="h-11 w-11 flex items-center justify-center hover:bg-[#F4EFE6] cursor-pointer"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -109,7 +105,7 @@ export const CartPage: React.FC = () => {
                         type="button"
                         onClick={() => updateCartQuantity(item.productId, item.variantId, item.quantity + 1)}
                         aria-label={`Increase ${item.name} quantity`}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-[#F4EFE6] cursor-pointer"
+                        className="h-11 w-11 flex items-center justify-center hover:bg-[#F4EFE6] cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>

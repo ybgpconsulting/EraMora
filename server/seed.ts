@@ -46,6 +46,9 @@ const IMG = {
   coffret: '/brand/eramora/campaigns/thoughtful-gifting.jpg',
   ritual: '/brand/eramora/campaigns/brand-introduction.jpg',
 };
+const PRODUCT_IMG = {
+  perfume: '/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg',
+};
 
 export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
   if (
@@ -103,7 +106,7 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
     categoryName,
     description: 'This is a clearly marked demo or sample product for ERAMORA catalogue preparation. Confirmed product details, pricing and availability will be published only after approval.',
     specifications: { 'Catalogue Status': 'Demo / sample — not yet approved for sale' },
-    images: [categoryId === 'cat-curated-fragrances' ? IMG.perfume : categoryId === 'cat-gifting' ? IMG.coffret : categoryId === 'cat-scented-candles' ? IMG.candle : IMG.ritual],
+    images: [categoryId === 'cat-curated-fragrances' ? PRODUCT_IMG.perfume : categoryId === 'cat-gifting' ? IMG.coffret : categoryId === 'cat-scented-candles' ? IMG.candle : IMG.ritual],
     variants: [{ id: `demo-${index + 1}-variant`, label: 'Sample variant', size: 'TBC', price: 0, stock: 0, sku: `DEMO-${String(index + 1).padStart(2, '0')}` }],
     badges: ['Demo / Sample'],
     isShowcaseDemo: true,

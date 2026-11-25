@@ -4,6 +4,7 @@ import type { Product } from '../types/store';
 import { useStore } from '../context/StoreContext';
 import { ImageWithFallback } from './ImageWithFallback';
 import { formatINR } from '../utils/commerce';
+import { getProductImage } from '../utils/catalogue';
 
 interface ProductCardProps {
   product: Product;
@@ -48,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           aria-label={`View ${product.name}`}
         >
           <ImageWithFallback
-            src={product.images[0]}
+            src={getProductImage(product)}
             alt={product.name}
             fallbackTitle={product.name}
             className="h-full w-full object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.05]"
@@ -70,7 +71,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             toggleWishlist(product.id);
           }}
           aria-label={isSaved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#2C1E16]/8 bg-[#FAF7F2]/85 text-[#2C1E16] backdrop-blur-md transition-colors hover:text-[#B89352] cursor-pointer"
+          aria-pressed={isSaved}
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#2C1E16]/8 bg-[#FAF7F2]/85 text-[#2C1E16] backdrop-blur-md transition-colors hover:text-[#B89352] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
         >
           <Heart className={`h-4 w-4 ${isSaved ? 'fill-[#B89352] text-[#B89352]' : ''}`} strokeWidth={1.6} />
         </button>
@@ -85,7 +87,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 ? `Quick add ${product.name} to bag`
                 : `View ${product.name} availability`
           }
-          className="absolute inset-x-3 bottom-3 flex translate-y-0 items-center justify-center gap-2 bg-[#2C1E16]/95 py-2.5 text-[9px] uppercase tracking-[0.22em] text-[#FAF7F2] opacity-100 transition-all duration-500 hover:bg-[#2C1E16] md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 cursor-pointer"
+          className="absolute inset-x-3 bottom-3 flex min-h-11 translate-y-0 items-center justify-center gap-2 bg-[#2C1E16]/95 py-2.5 text-[9px] uppercase tracking-[0.22em] text-[#FAF7F2] opacity-100 transition-all duration-500 hover:bg-[#2C1E16] focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] focus-visible:ring-offset-2 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 cursor-pointer"
         >
           {product.isShowcaseDemo ? (
             <ArrowUpRight aria-hidden="true" className="h-3 w-3" strokeWidth={1.8} />

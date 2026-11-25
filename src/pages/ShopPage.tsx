@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SeoHead } from '../components/SeoHead';
 import { ProductCard } from '../components/ProductCard';
+import { SEO_PAGES } from '../utils/seo';
 
 export const ShopPage: React.FC = () => {
   const { path, navigate, categories, products, loadingCatalog } = useStore();
@@ -76,11 +77,7 @@ export const ShopPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-14">
-      <SeoHead
-        title={`${activeCategoryObj ? activeCategoryObj.name : 'Shop All Creations'} | ERAMORA`}
-        description="Explore ERAMORA curated fragrances, scented candles, sculptural candles, DIY colouring kits and gifting."
-        canonicalPath="/shop"
-      />
+      <SeoHead {...SEO_PAGES.shop} />
 
       <div className="border-b border-[#2C1E16]/12 pb-8 mb-8">
         <p className="text-xs uppercase tracking-[0.18em] text-[#6B584C]">ERAMORA Catalogue</p>
@@ -88,7 +85,9 @@ export const ShopPage: React.FC = () => {
           {activeCategoryObj ? activeCategoryObj.name : 'All Creations'}
         </h1>
         <p className="mt-2 text-sm text-[#6B584C] max-w-2xl">
-          {activeCategoryObj
+          {loadingCatalog
+            ? 'Loading the current catalogue...'
+            : activeCategoryObj
             ? activeCategoryObj.description
             : hasApprovedProducts
               ? 'Explore the ERAMORA collection and contact our concierge to confirm product details and availability.'
@@ -104,13 +103,14 @@ export const ShopPage: React.FC = () => {
             setSelectedCategory('all');
             navigate('/shop');
           }}
-          className={`px-4 py-2 text-xs font-medium border transition-colors cursor-pointer ${
+          aria-pressed={selectedCategory === 'all'}
+          className={`min-h-11 px-4 py-2 text-xs font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer ${
             selectedCategory === 'all'
               ? 'bg-[#2C1E16] text-[#FAF7F2] border-[#2C1E16]'
               : 'border-[#2C1E16]/15 text-[#6B584C] hover:border-[#2C1E16] hover:text-[#2C1E16]'
           }`}
         >
-          All ({products.length})
+          {loadingCatalog ? 'All' : `All (${products.length})`}
         </button>
         {categories.map((cat) => (
           <button
@@ -120,7 +120,8 @@ export const ShopPage: React.FC = () => {
               setSelectedCategory(cat.slug);
               navigate(`/shop?category=${cat.slug}`);
             }}
-            className={`px-4 py-2 text-xs font-medium border transition-colors cursor-pointer ${
+            aria-pressed={selectedCategory === cat.slug || selectedCategory === cat.id}
+            className={`min-h-11 px-4 py-2 text-xs font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer ${
               selectedCategory === cat.slug || selectedCategory === cat.id
                 ? 'bg-[#2C1E16] text-[#FAF7F2] border-[#2C1E16]'
                 : 'border-[#2C1E16]/15 text-[#6B584C] hover:border-[#2C1E16] hover:text-[#2C1E16]'
@@ -141,7 +142,7 @@ export const ShopPage: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by scent note or product..."
             aria-label="Filter products by keyword"
-            className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 pl-9 pr-3 py-2 text-sm text-[#2C1E16] focus:outline-none focus:border-[#B89352]"
+            className="w-full min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/15 pl-9 pr-3 py-2 text-sm text-[#2C1E16] focus:outline-none focus:border-[#B89352] focus-visible:ring-2 focus-visible:ring-[#B89352]"
           />
         </div>
 
@@ -186,7 +187,7 @@ export const ShopPage: React.FC = () => {
             id="shop-sort"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] focus:outline-none focus:border-[#B89352]"
+            className="min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] focus:outline-none focus:border-[#B89352] focus-visible:ring-2 focus-visible:ring-[#B89352]"
           >
             <option value="featured">Curated Featured</option>
             <option value="popular">Most Popular</option>
@@ -203,9 +204,14 @@ export const ShopPage: React.FC = () => {
 
       {/* Results Grid */}
       {loadingCatalog ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div role="status" aria-label="Loading catalogue" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div key={n} className="aspect-[4/3] bg-[#F4EFE6] animate-pulse" />
+            <div key={n} className="space-y-3">
+              <div className="aspect-[4/5] bg-[#F4EFE6] animate-pulse" />
+              <div className="h-3 w-1/3 bg-[#F4EFE6] animate-pulse" />
+              <div className="h-5 w-2/3 bg-[#F4EFE6] animate-pulse" />
+              <div className="h-3 w-full bg-[#F4EFE6] animate-pulse" />
+            </div>
           ))}
         </div>
       ) : filteredProducts.length === 0 ? (
@@ -221,7 +227,7 @@ export const ShopPage: React.FC = () => {
               setInStockOnly(false);
               navigate('/shop');
             }}
-            className="bg-[#2C1E16] text-[#FAF7F2] px-6 py-2.5 text-xs uppercase tracking-widest cursor-pointer"
+            className="min-h-11 bg-[#2C1E16] text-[#FAF7F2] px-6 py-2.5 text-xs uppercase tracking-widest cursor-pointer"
           >
             Reset Filters
           </button>

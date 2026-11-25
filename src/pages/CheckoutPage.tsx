@@ -5,6 +5,7 @@ import { SeoHead } from '../components/SeoHead';
 import { WhatsAppIcon } from '../components/WhatsAppIcon';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { buildCartWhatsAppUrl } from '../utils/commerce';
+import { SEO_PAGES } from '../utils/seo';
 
 export const CheckoutPage: React.FC = () => {
   const { cart, products, settings, giftWrapSelected, giftMessage, navigate } = useStore();
@@ -21,12 +22,7 @@ export const CheckoutPage: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-14">
-      <SeoHead
-        title="WhatsApp Enquiry | ERAMORA"
-        description="Review your ERAMORA selection and send a non-binding enquiry to our WhatsApp concierge."
-        canonicalPath="/checkout"
-        noIndex
-      />
+      <SeoHead {...SEO_PAGES.checkout} />
 
       <button
         type="button"

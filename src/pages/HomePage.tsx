@@ -5,6 +5,7 @@ import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { Reveal } from '../components/Reveal';
 import { useScrollProgress, useWindowScroll } from '../hooks/useScrollProgress';
+import { SEO_PAGES } from '../utils/seo';
 
 const IMG = {
   hero: '/src/assets/images/hero_eramora_atelier_1794827348612.jpg',
@@ -16,6 +17,7 @@ const IMG = {
 };
 
 interface ChapterProps {
+  id?: string;
   index: string;
   eyebrow: string;
   title: string;
@@ -25,20 +27,20 @@ interface ChapterProps {
   image: string;
 }
 
-const Chapter = React.memo(function Chapter({ index, eyebrow, title, body, cta, href, image }: ChapterProps) {
+const Chapter = React.memo(function Chapter({ id, index, eyebrow, title, body, cta, href, image }: ChapterProps) {
   const { navigate } = useStore();
   const ref = useRef<HTMLElement>(null);
   const progress = useScrollProgress(ref);
   const reveal = Math.min(1, Math.max(0, (progress - 0.04) / 0.3));
 
   return (
-    <section ref={ref} className="relative h-[190svh] bg-[#1B120D] md:h-[225svh]">
-      <div className="sticky top-[var(--nav-h)] h-[calc(100svh-var(--nav-h))] overflow-hidden">
+    <section id={id} ref={ref} className="home-scroll-chapter relative h-[190svh] bg-[#1B120D] md:h-[225svh]">
+      <div className="home-scroll-stage sticky top-[var(--nav-h)] h-[calc(100svh-var(--nav-h))] overflow-hidden">
         <img
           src={image}
           alt={title}
           loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover will-change-transform"
+          className="home-scroll-image absolute inset-0 h-full w-full object-cover will-change-transform"
           style={{ transform: `scale(${1.07 + progress * 0.1})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/92 via-[#1B120D]/20 to-[#1B120D]/55" />
@@ -48,9 +50,9 @@ const Chapter = React.memo(function Chapter({ index, eyebrow, title, body, cta, 
           <span className="text-[10px] tabular-nums tracking-[0.34em]">{index}</span>
         </div>
 
-        <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-end px-5 pb-24 md:px-10 md:pb-16">
+        <div className="home-scroll-content relative mx-auto flex h-full max-w-7xl flex-col justify-end px-5 pb-24 md:px-10 md:pb-16">
           <div
-            className="max-w-xl text-[#FAF7F2]"
+            className="home-scroll-copy max-w-xl text-[#FAF7F2]"
             style={{ opacity: reveal, transform: `translate3d(0, ${(1 - reveal) * 30}px, 0)` }}
           >
             <p className="luxe-eyebrow text-[#C5A059]">{eyebrow}</p>
@@ -127,25 +129,21 @@ const campaignArtwork = [
 export const HomePage: React.FC = () => {
   const { navigate, banners, settings } = useStore();
   const scrollY = useWindowScroll();
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-
-  // The cover opens as an image alone; the line arrives as the visitor begins to scroll.
-  const headlineReveal = Math.min(1, Math.max(0, (scrollY - 28) / 180));
+  const heroImage =
+    banners.heroImage === '/brand/eramora/campaigns/brand-introduction.jpg'
+      ? IMG.hero
+      : banners.heroImage || IMG.hero;
 
   return (
     <div className="overflow-x-clip bg-[#FAF7F2]">
-      <SeoHead
-        title="ERAMORA — Where Fragrance Meets Emotion | Luxury Candles & Perfume"
-        description="Explore ERAMORA's curated fragrances, candles and gifting. Where fragrance meets emotion—make every moment memorable."
-        canonicalPath="/"
-      />
+      <SeoHead {...SEO_PAGES.home} />
 
-      {/* ---------- Cover: image only, scroll-driven ---------- */}
+      {/* ---------- Cover ---------- */}
       <section className="relative h-[calc(100svh-var(--nav-h))] min-h-[520px] overflow-hidden bg-[#1B120D]">
         <img
-          src={banners.heroImage || IMG.hero}
+          src={heroImage}
           alt="ERAMORA scented candle and Eau de Parfum flacon on travertine stone"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="home-hero-image absolute inset-0 h-full w-full object-cover"
           style={{
             transform: `translate3d(0, ${Math.min(scrollY * 0.16, 120)}px, 0) scale(${
               1.05 + Math.min(scrollY / 5000, 0.05)
@@ -156,28 +154,39 @@ export const HomePage: React.FC = () => {
 
         <div className="absolute inset-x-0 top-0 flex justify-center px-6 pt-7">
           <span className="luxe-eyebrow text-center text-[#FAF7F2]/70">
-            {settings.brandName} · Atelier Collection
+            {banners.heroEyebrow || `${settings.brandName} · Atelier Collection`}
           </span>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-6 px-6 pb-28 text-center md:pb-14">
-          <div
-            style={{
-              opacity: headlineReveal,
-              transform: `translate3d(0, ${(1 - headlineReveal) * 24}px, 0)`,
-            }}
-          >
-            <h1 className="mx-auto max-w-3xl text-balance font-serif text-[2.7rem] leading-[1.02] text-[#FAF7F2] md:text-6xl lg:text-7xl">
+        <div className="absolute inset-x-0 top-[13%] flex flex-col items-center gap-5 px-6 text-center md:top-[16%]">
+          <div>
+            <h1 className="mx-auto max-w-3xl text-balance font-serif text-[2.5rem] leading-[1.02] text-[#FAF7F2] drop-shadow-[0_2px_14px_rgba(27,18,13,0.7)] md:text-6xl lg:text-7xl">
               {banners.heroHeadline}
             </h1>
-            <p className="mx-auto mt-4 max-w-md text-[12px] leading-relaxed text-[#FAF7F2]/70 md:text-sm">
+            <p className="mx-auto mt-4 max-w-md text-[12px] leading-relaxed text-[#FAF7F2] drop-shadow-[0_1px_8px_rgba(27,18,13,0.8)] md:text-sm">
               {banners.heroSubheadline}
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => window.scrollTo({ top: viewportHeight * 0.9, behavior: 'smooth' })}
+            onClick={() => navigate('/shop')}
+            className="group inline-flex min-h-11 items-center gap-2 bg-[#2C1E16] px-6 text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FAF7F2] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241811] cursor-pointer"
+          >
+            {banners.heroCtaLabel || 'Explore the Collection'}
+            <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 flex justify-center pb-28 md:pb-10">
+          <button
+            type="button"
+            onClick={() => {
+              const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+              document.getElementById('home-philosophy')?.scrollIntoView({
+                behavior: reducedMotion ? 'auto' : 'smooth',
+              });
+            }}
             aria-label="Scroll to explore the atelier"
             className="group flex flex-col items-center gap-3 cursor-pointer"
           >
@@ -193,6 +202,7 @@ export const HomePage: React.FC = () => {
 
       {/* ---------- Scroll chapters ---------- */}
       <Chapter
+        id="home-philosophy"
         index="I"
         eyebrow="The Philosophy"
         title="Where Fragrance Meets Emotion."

@@ -70,8 +70,21 @@ npx wrangler secret put ADMIN_DEMO_PASSWORD  # unique password, 12–256 charact
 npx wrangler secret put SESSION_SECRET       # random secret, at least 32 characters
 ```
 
+`wrangler.jsonc` declares both secrets as required, so deployments fail when either is missing.
+Each `wrangler secret put` command deploys a new Worker version immediately. For a first deployment,
+create an ignored `.prod.secrets` JSON file containing both production secrets and deploy them with:
+
+```bash
+npm run build
+npx wrangler deploy --secrets-file .prod.secrets
+```
+
+Keep `.prod.secrets` out of source control and never reuse `.dev.vars` values in production.
 Administrator login fails closed if either secret is missing or invalid. Generate a unique session
 secret and never store it in source control or Wrangler `vars`.
+
+Worker binding types are generated from `wrangler.jsonc`. Run `npm run types:worker` after changing
+bindings or required secrets; `npm run typecheck` checks that the committed generated types are current.
 
 Canonical URLs and sitemap entries use the fixed public origin `https://eramora.in`,
 configured in `src/utils/seo.ts`. `APP_URL` does not override this canonical origin.
@@ -92,13 +105,18 @@ The upload endpoint automatically prefers R2 over the D1 fallback.
 wrangler login
 wrangler d1 create eramora-store
 # copy the returned database_id into wrangler.jsonc
-npm run deploy
+# create .prod.secrets with the two required production secrets
+npm run build
+npx wrangler deploy --secrets-file .prod.secrets
 ```
 
 1. `wrangler d1 create` prints the `database_id`; replace the placeholder in `wrangler.jsonc`.
-2. `npm run deploy` runs `vite build` and `wrangler deploy`.
-3. Before routing production traffic, set `ADMIN_DEMO_PASSWORD` and `SESSION_SECRET` with `npx wrangler secret put`.
+2. The first deployment uploads the required secrets with the Worker. Later deployments can use `npm run deploy`.
+3. This config does not declare a custom domain or route. Verify the Cloudflare domain-to-Worker
+   attachment and the `workers.dev` hostname before routing production traffic.
 4. The Worker creates its runtime schema on first request and migrates existing application state without resetting the catalogue. You can apply the tracked SQL migrations explicitly with `npx wrangler d1 migrations apply eramora-store --remote`.
+5. Before launch, an owner must verify the grievance officer identity and contact/address details
+   shown on the site, and approve the live catalogue, product imagery, and commercial claims.
 
 Validate the bundle without publishing:
 
@@ -114,6 +132,9 @@ wrangler d1 migrations apply eramora-store --remote
 ```
 
 The migration is idempotent and matches the runtime schema; the Worker still seeds an empty database on its first request.
+
+Production tracing is enabled at a 5% sample rate to limit trace volume; logs remain enabled for
+all invocations. Review observability usage after launch and adjust sampling to actual traffic.
 
 For Freebuff Sites, use the same `dist/` output and Worker entry through the Sites deployment manifest.
 

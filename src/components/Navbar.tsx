@@ -5,6 +5,7 @@ import { BrandLogo } from './BrandLogo';
 import { ImageWithFallback } from './ImageWithFallback';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { buildGeneralWhatsAppUrl, formatINR } from '../utils/commerce';
+import { useModalFocus } from '../hooks/useModalFocus';
 
 export const Navbar: React.FC = () => {
   const {
@@ -23,6 +24,8 @@ export const Navbar: React.FC = () => {
   const [bannerVisible, setBannerVisible] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuDialogRef = useModalFocus<HTMLDivElement>(menuOpen, () => setMenuOpen(false));
+  const searchDialogRef = useModalFocus<HTMLDivElement>(isSearchOpen, () => setIsSearchOpen(false));
 
   const isAdmin = path.startsWith('/admin');
   const basePath = path.split('?')[0].replace(/\/+$/, '') || '/';
@@ -30,15 +33,6 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setMenuOpen(false);
   }, [path]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [menuOpen]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -59,7 +53,7 @@ export const Navbar: React.FC = () => {
     { label: 'Scented Candles', href: '/shop?category=scented-candles' },
     { label: 'Sculptural Candles', href: '/shop?category=sculptural-candles' },
     { label: 'DIY Colouring Kits', href: '/shop?category=diy-colouring-kits' },
-    { label: 'Gifting', href: '/shop?category=gifting' },
+    { label: 'Gifting', href: '/gifting' },
     { label: 'About', href: '/about' },
   ];
 
@@ -69,7 +63,7 @@ export const Navbar: React.FC = () => {
     { label: 'Scented Candles', href: '/shop?category=scented-candles' },
     { label: 'Sculptural Candles', href: '/shop?category=sculptural-candles' },
     { label: 'DIY Colouring Kits', href: '/shop?category=diy-colouring-kits' },
-    { label: 'Gifting', href: '/shop?category=gifting' },
+    { label: 'Gifting', href: '/gifting' },
     { label: 'Our Story', href: '/about' },
     { label: 'Contact', href: '/contact' },
   ];
@@ -98,22 +92,19 @@ export const Navbar: React.FC = () => {
   return (
     <>
       {bannerVisible && banners.announcementText && !isAdmin && basePath !== '/' && (
-        <div className="relative flex h-9 items-center overflow-hidden bg-[#241811] text-[#FAF7F2]/70">
-          <div className="marquee-track">
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="flex items-center whitespace-nowrap px-8 text-[9px] uppercase tracking-[0.34em]">
-                {banners.announcementText}
-                <span className="px-8 text-[#C5A059]" aria-hidden="true">
-                  ✦
-                </span>
-              </span>
-            ))}
-          </div>
+        <div
+          role="region"
+          aria-label="Announcement"
+          className="relative flex min-h-11 items-center overflow-hidden bg-[#241811] px-12 text-[#FAF7F2]/70"
+        >
+          <p className="mx-auto max-w-full truncate text-center text-[9px] uppercase tracking-[0.2em]">
+            {banners.announcementText}
+          </p>
           <button
             type="button"
             onClick={() => setBannerVisible(false)}
             aria-label="Dismiss announcement"
-            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center bg-[#241811] text-[#FAF7F2]/50 transition-colors hover:text-[#FAF7F2] cursor-pointer"
+            className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center bg-[#241811] text-[#FAF7F2]/70 transition-colors hover:text-[#FAF7F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] cursor-pointer"
           >
             <X className="h-3 w-3" />
           </button>
@@ -129,7 +120,7 @@ export const Navbar: React.FC = () => {
               aria-label="Open menu"
               aria-expanded={menuOpen}
               aria-controls="mobile-primary-navigation"
-              className="-ml-2 flex h-10 w-10 items-center justify-center text-[#2C1E16] lg:hidden cursor-pointer"
+              className="-ml-2 flex h-11 w-11 items-center justify-center text-[#2C1E16] lg:hidden cursor-pointer"
             >
               <Menu className="h-5 w-5" strokeWidth={1.4} />
             </button>
@@ -164,7 +155,8 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => setIsSearchOpen(true)}
               aria-label="Search ERAMORA catalogue"
-              className="flex h-10 min-w-[38px] items-center justify-center text-[#2C1E16] transition-colors hover:text-[#B89352] cursor-pointer"
+              aria-controls="catalog-search-dialog"
+              className="flex h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#B89352] cursor-pointer"
             >
               <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
             </button>
@@ -173,7 +165,7 @@ export const Navbar: React.FC = () => {
               href="/wishlist"
               onClick={(e) => handleNavClick(e, '/wishlist')}
               aria-label={`Wishlist (${wishlist.length} saved)`}
-              className="relative hidden h-10 min-w-[38px] items-center justify-center text-[#2C1E16] transition-colors hover:text-[#B89352] md:flex"
+              className="relative hidden h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#B89352] md:flex"
             >
               <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
               {wishlist.length > 0 && (
@@ -186,7 +178,7 @@ export const Navbar: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Book or enquire on WhatsApp"
-              className="flex h-10 min-w-[38px] items-center justify-center text-[#2C1E16] transition-colors hover:text-[#25D366]"
+              className="flex h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#25D366]"
             >
               <WhatsAppIcon className="h-[18px] w-[18px] text-[#25D366]" />
             </a>
@@ -194,7 +186,7 @@ export const Navbar: React.FC = () => {
             <a
               href={phoneUrl}
               aria-label={`Call ERAMORA at ${settings.supportPhone}`}
-              className="hidden h-10 items-center justify-center gap-2 text-[#2C1E16] transition-colors hover:text-[#B89352] sm:flex sm:min-w-[38px] xl:px-2"
+              className="hidden h-11 items-center justify-center gap-2 text-[#2C1E16] transition-colors hover:text-[#B89352] sm:flex sm:min-w-11 xl:px-2"
             >
               <Phone className="h-[17px] w-[17px]" strokeWidth={1.5} />
               <span className="hidden text-[10px] tracking-[0.12em] xl:inline">{settings.supportPhone}</span>
@@ -204,7 +196,8 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => setIsCartOpen(true)}
               aria-label={`Shopping bag (${cartCount} items)`}
-              className="relative flex h-10 min-w-[40px] items-center justify-center gap-1 text-[#2C1E16] transition-colors hover:text-[#B89352] cursor-pointer"
+              aria-controls="cart-drawer"
+              className="relative flex h-11 min-w-11 items-center justify-center gap-1 text-[#2C1E16] transition-colors hover:text-[#B89352] cursor-pointer"
             >
               <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
               {cartCount > 0 && (
@@ -221,10 +214,12 @@ export const Navbar: React.FC = () => {
       {menuOpen && (
         <div
           id="mobile-primary-navigation"
+          ref={menuDialogRef}
           className="fixed inset-0 z-50 lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="ERAMORA menu"
+          tabIndex={-1}
         >
           <div
             className="animate-fade-in absolute inset-0 bg-[#241811]/55 backdrop-blur-sm"
@@ -237,7 +232,7 @@ export const Navbar: React.FC = () => {
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close menu"
-                className="flex h-10 w-10 items-center justify-center text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
+                className="flex h-11 w-11 items-center justify-center text-[#6B584C] hover:text-[#2C1E16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
               >
                 <X className="h-5 w-5" strokeWidth={1.4} />
               </button>
@@ -316,18 +311,20 @@ export const Navbar: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="Search ERAMORA"
-          className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center bg-[#241811]/55 px-4 pt-16 backdrop-blur-sm md:pt-24"
+          id="catalog-search-dialog"
+          ref={searchDialogRef}
+          tabIndex={-1}
+          className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#241811]/55 px-4 pt-16 pb-6 backdrop-blur-sm md:pt-24"
           onClick={() => setIsSearchOpen(false)}
         >
           <div
-            className="animate-soft-rise w-full max-w-2xl border border-[#2C1E16]/10 bg-[#FAF7F2] p-5 shadow-2xl md:p-7"
+            className="animate-soft-rise max-h-[calc(100dvh-5.5rem)] w-full max-w-2xl overflow-y-auto border border-[#2C1E16]/10 bg-[#FAF7F2] p-5 shadow-2xl md:max-h-[calc(100dvh-6.5rem)] md:p-7"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 border-b border-[#2C1E16]/15 pb-3">
               <Search className="h-[18px] w-[18px] text-[#B89352]" strokeWidth={1.5} />
               <input
                 type="search"
-                autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -344,7 +341,7 @@ export const Navbar: React.FC = () => {
                 type="button"
                 onClick={() => setIsSearchOpen(false)}
                 aria-label="Close search"
-                className="flex h-9 min-w-9 items-center justify-center text-[#6B584C] hover:text-[#2C1E16] cursor-pointer"
+                className="flex h-11 min-w-11 items-center justify-center text-[#6B584C] hover:text-[#2C1E16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
               >
                 <X className="h-5 w-5" strokeWidth={1.4} />
               </button>
@@ -395,7 +392,11 @@ export const Navbar: React.FC = () => {
                           {prod.name}
                         </p>
                         <p className="text-[11px] text-[#6B584C] tabular-nums">
-                          {prod.categoryName} · {formatINR(prod.variants[0]?.price || 0)}
+                          {prod.categoryName} · {prod.isShowcaseDemo
+                            ? 'Demo concept · Not for sale'
+                            : prod.variants[0]
+                              ? formatINR(prod.variants[0].price)
+                              : 'Price on request'}
                         </p>
                       </div>
                     </button>
