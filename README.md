@@ -112,8 +112,11 @@ npx wrangler deploy --secrets-file .prod.secrets
 
 1. `wrangler d1 create` prints the `database_id`; replace the placeholder in `wrangler.jsonc`.
 2. The first deployment uploads the required secrets with the Worker. Later deployments can use `npm run deploy`.
-3. This config does not declare a custom domain or route. Verify the Cloudflare domain-to-Worker
-   attachment and the `workers.dev` hostname before routing production traffic.
+3. Wrangler attaches `eramora.in` and `www.eramora.in` as custom domains and disables the public
+   `workers.dev` and Preview URLs. In the Cloudflare zone's SSL/TLS > Edge Certificates settings,
+   set **Minimum TLS Version** to **TLS 1.2** and enable **Always Use HTTPS**. These zone settings
+   are managed separately from Wrangler; verify them after configuration changes. The Worker also
+   redirects production GET/HEAD requests to HTTPS and rejects other plaintext requests.
 4. The Worker creates its runtime schema on first request and migrates existing application state without resetting the catalogue. You can apply the tracked SQL migrations explicitly with `npx wrangler d1 migrations apply eramora-store --remote`.
 5. Before launch, an owner must verify the grievance officer identity and contact/address details
    shown on the site, and approve the live catalogue, product imagery, and commercial claims.

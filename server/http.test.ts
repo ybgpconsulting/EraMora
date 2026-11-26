@@ -37,6 +37,13 @@ test('rejects malformed origins and allows non-browser requests without origin m
   assert.equal(isSameOriginMutation(nonBrowser, requestUrl), true);
 });
 
+test('marks cleared session cookies as Secure when requested', () => {
+  const response = new HttpResponse();
+  response.clearCookie('session', true);
+
+  assert.match(response.headers.get('set-cookie') || '', /; Secure$/);
+});
+
 test('rate limits requests through a shared D1 counter without storing the raw IP', async () => {
   let count = 0;
   let storedKey = '';

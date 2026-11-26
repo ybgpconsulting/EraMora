@@ -231,10 +231,9 @@ router.post(
       return res.status(503).json({ error: 'Administrator session signing is not configured.' });
     }
     if (
-      req.env.ENVIRONMENT === 'production' &&
-      (!req.env.ADMIN_DEMO_PASSWORD ||
-        req.env.ADMIN_DEMO_PASSWORD.length < 12 ||
-        req.env.ADMIN_DEMO_PASSWORD.length > 256)
+      !req.env.ADMIN_DEMO_PASSWORD ||
+      req.env.ADMIN_DEMO_PASSWORD.length < 12 ||
+      req.env.ADMIN_DEMO_PASSWORD.length > 256
     ) {
       return res.status(503).json({ error: 'Administrator access is not configured with a valid password.' });
     }
@@ -244,11 +243,7 @@ router.post(
     if (password.length > 256) return res.status(401).json({ error: 'Invalid administrator credentials.' });
     let user = getDb().users.find((u) => u.email === email);
 
-    if (
-      req.env.ENVIRONMENT === 'production' &&
-      req.env.ADMIN_DEMO_PASSWORD &&
-      user?.passwordHash === DEFAULT_ADMIN_HASH
-    ) {
+    if (user?.passwordHash === DEFAULT_ADMIN_HASH) {
       const passwordHash = await hashPassword(req.env.ADMIN_DEMO_PASSWORD);
       await saveDb((draft) => {
         const admin = draft.users.find((candidate) => candidate.id === user?.id);
@@ -264,14 +259,21 @@ router.post(
     }
 
     const token = await signSessionToken(req.env, { userId: user.id, role: user.role, email: user.email });
-    setSessionCookie(res, token, req.url.protocol === 'https:');
+    setSessionCookie(
+      res,
+      token,
+      req.env.ENVIRONMENT === 'production' || req.url.protocol === 'https:'
+    );
     const { passwordHash: _ph, ...safeUser } = user;
     res.json({ user: safeUser });
   }
 );
 
-router.post('/api/auth/logout', (_req, res) => {
-  res.clearCookie(SESSION_COOKIE);
+router.post('/api/auth/logout', (req, res) => {
+  res.clearCookie(
+    SESSION_COOKIE,
+    req.env.ENVIRONMENT === 'production' || req.url.protocol === 'https:'
+  );
   res.json({ ok: true });
 });
 
@@ -554,6 +556,10 @@ const PAGE_SEO: Record<string, SeoMetadata> = {
   '/collections': SEO_PAGES.collections,
   '/gifting': SEO_PAGES.gifting,
   '/shop': SEO_PAGES.shop,
+  '/curated-fragrances': { ...SEO_PAGES.shop, canonicalPath: '/shop' },
+  '/scented-candles': { ...SEO_PAGES.shop, canonicalPath: '/shop' },
+  '/sculptural-candles': { ...SEO_PAGES.shop, canonicalPath: '/shop' },
+  '/diy-colouring-kits': { ...SEO_PAGES.shop, canonicalPath: '/shop' },
   '/about': SEO_PAGES.about,
   '/contact': SEO_PAGES.contact,
   '/account': { ...SEO_PAGES.contact, canonicalPath: '/contact' },
@@ -901,6 +907,29 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  if (env.ENVIRONMENT === 'production' && url.protocol !== 'https:') {
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      url.protocol = 'https:';
+      return withSecurityHeaders(
+        new Response(null, {
+          status: 308,
+          headers: {
+            location: url.toString(),
+            'cache-control': 'no-store',
+          },
+        }),
+        false
+      );
+    }
+
+    return withSecurityHeaders(
+      new Response('HTTPS is required.', {
+        status: 400,
+        headers: { 'cache-control': 'no-store' },
+      }),
+      false
+    );
+  }
   const pathname = url.pathname;
 
   try {

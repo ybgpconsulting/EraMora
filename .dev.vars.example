@@ -2,7 +2,7 @@
 
 ENVIRONMENT="development"
 # SESSION_SECRET: set a random value of at least 32 characters.
-# ADMIN_DEMO_PASSWORD: optionally set a local password (12-256 characters).
+# ADMIN_DEMO_PASSWORD: set a unique local password to enable admin login (12-256 characters).
 # SESSION_SECRET=""
 # ADMIN_DEMO_PASSWORD=""
 

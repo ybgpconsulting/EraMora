@@ -49,10 +49,8 @@ export const Navbar: React.FC = () => {
 
   const navLinks = [
     { label: 'Home', href: '/' },
-    { label: 'Curated Fragrances', href: '/shop?category=curated-fragrances' },
-    { label: 'Scented Candles', href: '/shop?category=scented-candles' },
-    { label: 'Sculptural Candles', href: '/shop?category=sculptural-candles' },
-    { label: 'DIY Colouring Kits', href: '/shop?category=diy-colouring-kits' },
+    { label: 'Fragrances', href: '/shop?category=curated-fragrances' },
+    { label: 'Candles', href: '/shop?category=scented-candles' },
     { label: 'Gifting', href: '/gifting' },
     { label: 'About', href: '/about' },
   ];
@@ -111,8 +109,8 @@ export const Navbar: React.FC = () => {
         </div>
       )}
 
-      <header className="sticky top-0 z-40 border-b border-[#2C1E16]/10 bg-[#FAF7F2]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-[52px] max-w-7xl items-center justify-between gap-2 px-3 md:gap-4 md:h-16 md:px-8 lg:px-10">
+      <header className="sticky top-0 z-40 border-b border-[#2C1E16]/10 bg-[#FAF7F2]/95 shadow-[0_8px_30px_-24px_rgba(44,30,22,0.45)] backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 md:h-[72px] md:px-8 xl:px-10">
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -120,7 +118,7 @@ export const Navbar: React.FC = () => {
               aria-label="Open menu"
               aria-expanded={menuOpen}
               aria-controls="mobile-primary-navigation"
-              className="-ml-2 flex h-11 w-11 items-center justify-center text-[#2C1E16] lg:hidden cursor-pointer"
+              className="-ml-2 flex h-11 w-11 items-center justify-center text-[#2C1E16] xl:hidden cursor-pointer"
             >
               <Menu className="h-5 w-5" strokeWidth={1.4} />
             </button>
@@ -129,14 +127,14 @@ export const Navbar: React.FC = () => {
             </a>
           </div>
 
-          <nav aria-label="Primary Navigation" className="hidden items-center gap-8 lg:flex">
+          <nav aria-label="Primary Navigation" className="hidden items-center justify-center gap-6 xl:flex 2xl:gap-8">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link.href)}
                 aria-current={isActive(link.href) ? 'page' : undefined}
-                className={`group relative whitespace-nowrap pb-1 text-[10px] uppercase tracking-[0.24em] transition-colors ${
+                className={`group relative whitespace-nowrap pb-1 text-[9px] uppercase tracking-[0.22em] transition-colors 2xl:text-[10px] ${
                   isActive(link.href) ? 'text-[#2C1E16]' : 'text-[#6B584C] hover:text-[#2C1E16]'
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352]`}
               >
@@ -215,7 +213,7 @@ export const Navbar: React.FC = () => {
         <div
           id="mobile-primary-navigation"
           ref={menuDialogRef}
-          className="fixed inset-0 z-50 lg:hidden"
+          className="fixed inset-0 z-50 xl:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="ERAMORA menu"

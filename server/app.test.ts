@@ -3,6 +3,7 @@ import test from 'node:test';
 import { handleRequest } from './app';
 import type { Env } from './env';
 import { signSessionToken } from './db';
+import { DEFAULT_ADMIN_HASH } from './seed';
 
 test('order and customer-data endpoints are disabled', async () => {
   const initialState = {
@@ -269,6 +270,8 @@ test('public product feed and sitemap exclude demo and archived products', async
   assert.ok(!sitemap.includes('archived-item'));
 
   let robotsContent = '';
+  let titleContent = '';
+  let canonicalHref = '';
   const previousHtmlRewriter = Reflect.get(globalThis, 'HTMLRewriter');
   class HtmlRewriterStub {
     on(selector: string, handlers: unknown): this {
@@ -277,6 +280,16 @@ test('public product feed and sitemap exclude demo and archived products', async
           element: (element: { setAttribute: (name: string, value: string) => void }) => void;
         };
         elementHandler.element({ setAttribute: (_name, value) => (robotsContent = value) });
+      } else if (selector === 'title') {
+        const elementHandler = handlers as {
+          element: (element: { setInnerContent: (value: string) => void }) => void;
+        };
+        elementHandler.element({ setInnerContent: (value) => (titleContent = value) });
+      } else if (selector === 'link[rel="canonical"]') {
+        const elementHandler = handlers as {
+          element: (element: { setAttribute: (name: string, value: string) => void }) => void;
+        };
+        elementHandler.element({ setAttribute: (_name, value) => (canonicalHref = value) });
       }
       return this;
     }
@@ -293,6 +306,25 @@ test('public product feed and sitemap exclude demo and archived products', async
     );
     assert.equal(demoPageResponse.status, 200);
     assert.equal(robotsContent, 'noindex, nofollow');
+
+    for (const path of [
+      '/curated-fragrances',
+      '/scented-candles',
+      '/sculptural-candles',
+      '/diy-colouring-kits',
+    ]) {
+      titleContent = '';
+      canonicalHref = '';
+      robotsContent = '';
+      const aliasResponse = await handleRequest(new Request(`https://store.example${path}`), env);
+      assert.equal(aliasResponse.status, 200);
+      assert.equal(titleContent, 'Shop Fragrances, Candles & Gifts | ERAMORA');
+      assert.equal(canonicalHref, 'https://eramora.in/shop');
+      assert.equal(
+        robotsContent,
+        'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+      );
+    }
   } finally {
     if (previousHtmlRewriter === undefined) Reflect.deleteProperty(globalThis, 'HTMLRewriter');
     else Reflect.set(globalThis, 'HTMLRewriter', previousHtmlRewriter);
@@ -430,6 +462,76 @@ test('login fails closed without a session secret and rejects oversized streamed
   assert.equal(oversizedRequest.headers.has('content-length'), false);
   const oversizedResponse = await handleRequest(oversizedRequest, env);
   assert.equal(oversizedResponse.status, 413);
+});
+
+test('login fails closed without an administrator password in non-production environments', async () => {
+  const storedData = JSON.stringify({
+    schemaVersion: 4,
+    users: [{
+      id: 'admin-1',
+      role: 'admin',
+      email: 'admin@eramora.in',
+      passwordHash: DEFAULT_ADMIN_HASH,
+    }],
+  });
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      return {
+        bind() {
+          return this;
+        },
+        first: async <T,>() =>
+          query.startsWith('SELECT data, version')
+            ? ({ data: storedData, version: 1 }) as T
+            : query.startsWith('INSERT INTO rate_limits')
+              ? ({ count: 1, reset_at: Date.now() + 60_000 }) as T
+              : null as T,
+        run: async () => ({ meta: { changes: 0 } }),
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    ENVIRONMENT: 'development',
+    SESSION_SECRET: 'development-test-secret-with-at-least-32-characters',
+  } as unknown as Env;
+
+  const response = await handleRequest(
+    new Request('https://store.example/api/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://store.example', 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@eramora.in', password: 'not-the-configured-password' }),
+    }),
+    env
+  );
+
+  assert.equal(response.status, 503);
+});
+
+test('production rejects insecure requests and redirects safe page requests to HTTPS', async () => {
+  const env = { ENVIRONMENT: 'production' } as Env;
+
+  const insecureLogin = await handleRequest(
+    new Request('http://store.example/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@example.com', password: 'dummy-password' }),
+    }),
+    env
+  );
+  assert.equal(insecureLogin.status, 400);
+  assert.equal(insecureLogin.headers.get('set-cookie'), null);
+
+  const insecurePage = await handleRequest(
+    new Request('http://store.example/catalog?category=home'),
+    env
+  );
+  assert.equal(insecurePage.status, 308);
+  assert.equal(
+    insecurePage.headers.get('location'),
+    'https://store.example/catalog?category=home'
+  );
 });
 
 test('admin image upload stores a validated image and returns its public URL', async () => {

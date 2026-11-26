@@ -81,8 +81,9 @@ export class HttpResponse {
     return this;
   }
 
-  clearCookie(name: string): this {
-    this.headers.append('set-cookie', `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
+  clearCookie(name: string, secure = false): this {
+    const cookie = `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+    this.headers.append('set-cookie', cookie);
     return this;
   }
 

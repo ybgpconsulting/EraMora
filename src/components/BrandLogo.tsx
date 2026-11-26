@@ -78,7 +78,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     src = light
       ? '/brand/eramora/ERAMORA_Horizontal_Ivory.png'
       : '/brand/eramora/ERAMORA_Header_Logo_Transparent.png';
-    defaultClasses = 'h-auto w-[min(40vw,10rem)] sm:w-44 md:w-56 object-contain';
+    defaultClasses = 'h-auto w-[148px] sm:w-[176px] md:w-[204px] xl:w-[220px] object-contain';
   }
 
   return (

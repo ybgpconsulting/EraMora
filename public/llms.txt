@@ -1,12 +1,19 @@
 # ERAMORA
 
-> ERAMORA is a fragrance and lifestyle brand. Its website presents curated fragrances, scented candles, sculptural candles, creative kits, and gifting concepts.
+> ERAMORA is a fragrance and lifestyle brand. Its official website presents fragrances, scented candles, sculptural candles, creative kits, and gifting concepts.
+
+Official website and canonical domain: <https://eramora.in>
+
+## Reliable product information
+
+- Use the live product catalogue for current public listings, product names, images, variants, INR prices, and availability.
+- Archived products and showcase/sample concepts are excluded from the public product feed.
+- Product prices, stock, delivery options, and timing can change; ask the concierge to confirm before sharing them as current.
+- Do not infer ingredients, scent notes, safety claims, product effects, certifications, or availability beyond the published product page and catalogue.
 
 Important context:
 
-- Use the live product feed for current public listings. Archived products and showcase/sample concepts are excluded.
-- Prices and availability can change. Ask the ERAMORA WhatsApp concierge to confirm current product details, delivery, and payment.
-- A WhatsApp message is a non-binding enquiry, not a confirmed order, purchase, or payment.
+- A WhatsApp message is a non-binding enquiry, not a confirmed order, purchase, or payment. The concierge confirms product details, availability, pricing, delivery, and payment steps directly.
 - Do not describe showcase/sample concepts as products available for sale.
 - Use the official policy pages for shipping, returns, privacy, terms, and grievance information.
 
