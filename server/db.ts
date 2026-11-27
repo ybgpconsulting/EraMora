@@ -1,5 +1,6 @@
 import { base64UrlDecode, base64UrlEncode, hmacSha256Base64Url, timingSafeEqualString } from './crypto';
 import type { Env } from './env';
+import { createDiyKitProducts, DIY_KIT_CATEGORY_DESCRIPTION, DIY_KIT_CATEGORY_IMAGE } from './diy-kit-products';
 import {
   createInitialSeed,
   DATABASE_SCHEMA_VERSION,
@@ -173,6 +174,37 @@ export async function initDb(env: Env): Promise<void> {
               sampleProductIds.has(product.id) ? normalizeSeededSampleProduct(product) : product
             )
           : [];
+
+        if (!Array.isArray(data.categories)) data.categories = [];
+        const diyCategory = data.categories.find((category) => category.id === 'cat-diy-colouring-kits');
+        if (diyCategory) {
+          if (
+            diyCategory.description ===
+            'Explore creative-kit concepts. Materials, contents, specifications and availability require confirmation.'
+          ) {
+            diyCategory.description = DIY_KIT_CATEGORY_DESCRIPTION;
+          }
+          if (diyCategory.image === '/brand/eramora/campaigns/brand-introduction.jpg') {
+            diyCategory.image = DIY_KIT_CATEGORY_IMAGE;
+          }
+        } else {
+          data.categories.push({
+            id: 'cat-diy-colouring-kits',
+            name: 'DIY Colouring Kits',
+            slug: 'diy-colouring-kits',
+            description: DIY_KIT_CATEGORY_DESCRIPTION,
+            image: DIY_KIT_CATEGORY_IMAGE,
+            featured: true,
+            sortOrder: 4,
+          });
+        }
+
+        const existingProductIds = new Set(data.products.map((product) => product.id));
+        const existingProductSlugs = new Set(data.products.map((product) => product.slug));
+        const newDiyProducts = createDiyKitProducts(new Date().toISOString()).filter(
+          (product) => !existingProductIds.has(product.id) && !existingProductSlugs.has(product.slug)
+        );
+        data.products.push(...newDiyProducts);
         data.schemaVersion = DATABASE_SCHEMA_VERSION;
 
         const result = await env.DB.prepare(
