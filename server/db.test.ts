@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getDb, initDb, signSessionToken, verifySessionToken } from './db';
 import { DATABASE_SCHEMA_VERSION, SEEDED_SAMPLE_PRODUCT_IDS } from './seed';
+import { DIY_KIT_CATALOGUE } from './diy-kit-products';
 import type { Env } from './env';
 
 test('versioned startup migration preserves catalogue edits and administrator data', async () => {
@@ -97,7 +98,9 @@ test('versioned startup migration preserves catalogue edits and administrator da
     'Explore gifting concepts and ask our concierge about current options and availability.'
   );
   assert.equal(migrated.schemaVersion, DATABASE_SCHEMA_VERSION);
-  const normalizedSamples = migrated.products.slice(1);
+  const normalizedSamples = migrated.products.filter((product) =>
+    SEEDED_SAMPLE_PRODUCT_IDS.includes(product.id)
+  );
   assert.equal(normalizedSamples.length, 25);
   for (const product of normalizedSamples) {
     assert.equal(product.isShowcaseDemo, true);
@@ -115,6 +118,17 @@ test('versioned startup migration preserves catalogue edits and administrator da
     assert.equal(product.reviewCount, 0);
     assert.match(product.description, /sample catalogue concept only/i);
   }
+  const diyProducts = migrated.products.filter((product) => product.categoryId === 'cat-diy-colouring-kits');
+  assert.equal(diyProducts.length, DIY_KIT_CATALOGUE.length);
+  for (const product of diyProducts) {
+    assert.equal(product.isShowcaseDemo, false);
+    assert.equal(product.variants[0].price, 199);
+    assert.equal(product.variants[0].stock, 0);
+    assert.equal(product.ratingAverage, 0);
+    assert.equal(product.reviewCount, 0);
+  }
+  assert.ok(migrated.categories.some((category) => category.id === 'cat-diy-colouring-kits'));
+
   for (const retiredField of ['orders', 'reviews', 'enquiries', 'abandonedCarts', 'coupons']) {
     assert.equal(retiredField in migrated, false);
   }

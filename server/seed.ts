@@ -1,5 +1,6 @@
 import { pbkdf2Hex, randomHex, timingSafeEqualString } from './crypto';
 import type { Env } from './env';
+import { createDiyKitProducts, DIY_KIT_CATEGORY_DESCRIPTION, DIY_KIT_CATEGORY_IMAGE } from './diy-kit-products';
 import type {
   BannerConfig,
   BusinessSettings,
@@ -8,7 +9,7 @@ import type {
   Product,
 } from '../src/types/store';
 
-export const DATABASE_SCHEMA_VERSION = 5;
+export const DATABASE_SCHEMA_VERSION = 6;
 
 export const SEEDED_SAMPLE_PRODUCT_IDS = Array.from(
   { length: 25 },
@@ -105,7 +106,7 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
     { id: 'cat-curated-fragrances', name: 'Curated Fragrances', slug: 'curated-fragrances', description: 'Explore fragrance concepts in the ERAMORA sample catalogue. Notes, formulation, price and availability require confirmation.', image: IMG.perfume, featured: true, sortOrder: 1 },
     { id: 'cat-scented-candles', name: 'Scented Candles', slug: 'scented-candles', description: 'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.', image: IMG.candle, featured: true, sortOrder: 2 },
     { id: 'cat-sculptural-candles', name: 'Sculptural Candles', slug: 'sculptural-candles', description: 'Explore sculptural candle concepts. Materials, dimensions, specifications and availability require confirmation.', image: IMG.ritual, featured: true, sortOrder: 3 },
-    { id: 'cat-diy-colouring-kits', name: 'DIY Colouring Kits', slug: 'diy-colouring-kits', description: 'Explore creative-kit concepts. Materials, contents, specifications and availability require confirmation.', image: IMG.hero, featured: true, sortOrder: 4 },
+    { id: 'cat-diy-colouring-kits', name: 'DIY Colouring Kits', slug: 'diy-colouring-kits', description: DIY_KIT_CATEGORY_DESCRIPTION, image: DIY_KIT_CATEGORY_IMAGE, featured: true, sortOrder: 4 },
     { id: 'cat-gifting', name: 'Gifting', slug: 'gifting', description: 'Explore gifting concepts. Product combinations, presentation, pricing and delivery details are confirmed by the concierge.', image: IMG.coffret, featured: true, sortOrder: 5 },
   ];
 
@@ -975,7 +976,7 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
   return {
     schemaVersion: DATABASE_SCHEMA_VERSION,
     categories,
-    products: products.map(normalizeSeededSampleProduct),
+    products: [...products.map(normalizeSeededSampleProduct), ...createDiyKitProducts(now)],
     users,
     banners,
     settings,
