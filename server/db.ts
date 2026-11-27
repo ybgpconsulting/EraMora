@@ -179,6 +179,15 @@ export async function initDb(env: Env): Promise<void> {
           data.products = Array.isArray(data.products) ? data.products : [];
           ensureDiyColouringKitCatalog(data.categories, data.products);
         }
+        if (storedSchemaVersion < 7) {
+          const incompleteListingSlugs = new Set(['asd', 'candle']);
+          data.products = Array.isArray(data.products) ? data.products : [];
+          data.products = data.products.map((product) =>
+            incompleteListingSlugs.has(product.slug) && !product.isArchived
+              ? { ...product, isArchived: true, updatedAt: new Date().toISOString() }
+              : product
+          );
+        }
         data.schemaVersion = DATABASE_SCHEMA_VERSION;
 
         const result = await env.DB.prepare(

@@ -9,7 +9,7 @@ import type {
 } from '../src/types/store';
 import { ensureDiyColouringKitCatalog } from './diy-colouring-kits';
 
-export const DATABASE_SCHEMA_VERSION = 6;
+export const DATABASE_SCHEMA_VERSION = 7;
 
 export const SEEDED_SAMPLE_PRODUCT_IDS = Array.from(
   { length: 25 },

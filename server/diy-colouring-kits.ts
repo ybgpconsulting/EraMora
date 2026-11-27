@@ -238,7 +238,11 @@ export function ensureDiyColouringKitCatalog(
     (item) => item.slug === DIY_COLOURING_KITS_CATEGORY.slug || item.id === DIY_COLOURING_KITS_CATEGORY.id
   );
   if (!category) {
-    category = { ...DIY_COLOURING_KITS_CATEGORY };
+    const sortOrder = categories.reduce(
+      (highest, item) => Math.max(highest, Number.isSafeInteger(item.sortOrder) ? item.sortOrder : 0),
+      0
+    ) + 1;
+    category = { ...DIY_COLOURING_KITS_CATEGORY, sortOrder };
     categories.push(category);
   } else {
     category.name = DIY_COLOURING_KITS_CATEGORY.name;

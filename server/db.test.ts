@@ -19,6 +19,24 @@ test('versioned startup migration preserves catalogue edits and administrator da
         variants: [{ price: 2500, stock: 7 }],
         images: ['/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg'],
       },
+      {
+        id: 'prod-legacy-asd',
+        slug: 'asd',
+        name: 'Asd',
+        subtitle: '',
+        description: '',
+        variants: [{ id: 'var-asd', label: '220g', size: '220g', price: 1950, stock: 15, sku: 'ERA-826' }],
+        isArchived: false,
+      },
+      {
+        id: 'prod-legacy-candle',
+        slug: 'candle',
+        name: 'cANDLE',
+        subtitle: '',
+        description: '',
+        variants: [{ id: 'var-candle', label: '220g', size: '220g', price: 1950, stock: 15, sku: 'ERA-671' }],
+        isArchived: false,
+      },
       ...SEEDED_SAMPLE_PRODUCT_IDS.map((id) => ({
         id,
         name: `Sample ${id}`,
@@ -119,6 +137,21 @@ test('versioned startup migration preserves catalogue edits and administrator da
   }
   const diyProducts = migrated.products.filter((product) => product.id.startsWith('diy-colouring-kit-'));
   assert.equal(diyProducts.length, 13);
+  const archivedLegacyListings = (migrated.products as Array<{
+    id: string;
+    slug?: string;
+    name: string;
+    description?: string;
+    isArchived?: boolean;
+    updatedAt?: string;
+  }>).filter((product) => product.slug === 'asd' || product.slug === 'candle');
+  assert.equal(archivedLegacyListings.length, 2);
+  assert.ok(archivedLegacyListings.every((product) => product.isArchived));
+  assert.deepEqual(
+    archivedLegacyListings.map((product) => [product.slug, product.name, product.description]),
+    [['asd', 'Asd', ''], ['candle', 'cANDLE', '']]
+  );
+  assert.ok(archivedLegacyListings.every((product) => Boolean(product.updatedAt)));
   assert.equal(
     migrated.categories.find((category) => category.slug === 'diy-colouring-kits')?.description,
     'Discover creative DIY colouring kits featuring decorative jars, bowls, trays and trinket dishes. Personalise your favourite designs with your own creative touch.'
@@ -131,6 +164,64 @@ test('versioned startup migration preserves catalogue edits and administrator da
 
   await initDb({ DB: fakeDb } as unknown as Env);
   assert.equal(storedVersion, 5, 'a completed migration should not write again');
+});
+
+test('version 6 archives only the two confirmed incomplete listings', async () => {
+  const records = [
+    { id: 'prod-asd', slug: 'asd', name: 'Asd', isArchived: false },
+    { id: 'prod-candle', slug: 'candle', name: 'cANDLE', isArchived: false },
+    { id: 'prod-custom', name: 'A real product', isArchived: false },
+  ];
+  let storedData = JSON.stringify({
+    schemaVersion: 6,
+    categories: [],
+    products: records,
+    users: [],
+    banners: {},
+    settings: {},
+  });
+  let storedVersion = 1;
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => ({ data: storedData, version: storedVersion }) as T,
+        run: async () => {
+          if (query.startsWith('UPDATE app_state')) {
+            if (values[1] !== storedVersion) return { meta: { changes: 0 } };
+            storedData = String(values[0]);
+            storedVersion += 1;
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        },
+      };
+    },
+  };
+
+  await initDb({ DB: fakeDb } as unknown as Env);
+  const migrated = JSON.parse(storedData) as {
+    schemaVersion: number;
+    products: Array<{ id: string; slug?: string; name: string; isArchived: boolean }>;
+  };
+  assert.equal(migrated.schemaVersion, 7);
+  assert.equal(migrated.products.length, records.length);
+  assert.deepEqual(
+    migrated.products.map((product) => [product.id, product.name, product.isArchived]),
+    [
+      ['prod-asd', 'Asd', true],
+      ['prod-candle', 'cANDLE', true],
+      ['prod-custom', 'A real product', false],
+    ]
+  );
+
+  await initDb({ DB: fakeDb } as unknown as Env);
+  assert.equal(storedVersion, 2, 'the migration should run only once');
 });
 
 test('schema migration retries CAS conflicts against the latest catalogue state', async () => {

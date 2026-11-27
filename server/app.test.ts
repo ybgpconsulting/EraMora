@@ -292,7 +292,7 @@ test('public product feed and sitemap exclude demo and archived products', async
   assert.equal(catalogResponse.status, 200);
   assert.deepEqual(
     catalog.map((item) => item.slug).sort(),
-    ['approved-fragrance', 'saffron-noir']
+    ['approved-fragrance', 'saffron-noir', ...diySlugs].sort()
   );
 
   for (const productSlug of ['asd', 'candle']) {
