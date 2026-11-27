@@ -165,6 +165,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
         description={getProductSeoDescription(product)}
         canonicalPath={`/product/${encodeURIComponent(product.slug)}`}
         image={getProductImage(product)}
+        keywords={product.seoKeywords}
         noIndex={product.isShowcaseDemo}
         structuredData={productSchema}
       />
@@ -202,7 +203,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               src={getProductImage(product, activeImgIdx)}
               alt={product.isShowcaseDemo
                 ? `${product.name} sample concept image ${activeImgIdx + 1}`
-                : `${product.name} — view ${activeImgIdx + 1}`}
+                : product.imageAlt || `${product.name} — view ${activeImgIdx + 1}`}
               loading="eager"
               className="w-full h-full object-cover transition-transform duration-700 ease-out hover:scale-105"
             />
@@ -701,7 +702,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           </button>
           <img
             src={getProductImage(product, activeImgIdx)}
-            alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.name}
+            alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.imageAlt || product.name}
             className="max-h-[85vh] max-w-[92vw] object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />

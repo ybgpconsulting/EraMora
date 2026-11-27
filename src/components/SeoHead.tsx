@@ -6,6 +6,7 @@ interface SeoHeadProps {
   description: string;
   canonicalPath?: string;
   image?: string;
+  keywords?: string[];
   noIndex?: boolean;
   structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
 }
@@ -25,6 +26,7 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
   description,
   canonicalPath,
   image = FALLBACK_SOCIAL_IMAGE,
+  keywords,
   noIndex = false,
   structuredData,
 }) => {
@@ -42,6 +44,11 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     };
 
     setMeta('meta[name="description"]', 'name', 'description', description);
+    if (keywords?.length) {
+      setMeta('meta[name="keywords"]', 'name', 'keywords', keywords.join(', '));
+    } else {
+      document.querySelector('meta[name="keywords"]')?.remove();
+    }
     setMeta('meta[property="og:title"]', 'property', 'og:title', title);
     setMeta('meta[property="og:description"]', 'property', 'og:description', description);
     setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', title);
@@ -85,7 +92,7 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
       const s = document.getElementById('eramora-dynamic-jsonld');
       if (s) s.remove();
     };
-  }, [title, description, canonicalPath, image, noIndex, structuredData]);
+  }, [title, description, canonicalPath, image, keywords, noIndex, structuredData]);
 
   return null;
 };

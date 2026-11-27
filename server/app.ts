@@ -468,6 +468,12 @@ router.post('/api/admin/products', requireAdmin, async (req, res) => {
     seoDescription: isShowcaseDemo
       ? SAMPLE_CONCEPT_SEO_DESCRIPTION
       : sanitizeString(body.seoDescription || body.subtitle || '', 220),
+    imageAlt: isShowcaseDemo ? undefined : sanitizeString(body.imageAlt || name, 300),
+    seoKeywords: isShowcaseDemo
+      ? undefined
+      : Array.isArray(body.seoKeywords)
+        ? body.seoKeywords.slice(0, 20).map((keyword) => sanitizeString(keyword, 80)).filter(Boolean)
+        : [],
     ratingAverage: 0,
     reviewCount: 0,
     createdAt: now,
@@ -545,6 +551,12 @@ router.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
     if (body.isArchived !== undefined) target.isArchived = Boolean(body.isArchived);
     if (body.seoTitle !== undefined) target.seoTitle = sanitizeString(body.seoTitle, 120);
     if (body.seoDescription !== undefined) target.seoDescription = sanitizeString(body.seoDescription, 220);
+    if (body.imageAlt !== undefined) target.imageAlt = sanitizeString(body.imageAlt, 300);
+    if (body.seoKeywords !== undefined) {
+      target.seoKeywords = Array.isArray(body.seoKeywords)
+        ? body.seoKeywords.slice(0, 20).map((keyword) => sanitizeString(keyword, 80)).filter(Boolean)
+        : [];
+    }
     if (target.isShowcaseDemo) Object.assign(target, normalizeDemoProduct(target));
     target.updatedAt = new Date().toISOString();
   });
@@ -783,6 +795,19 @@ function renderSeoHtml(response: Response, metadata: SeoMetadata): Response {
           `<script id="eramora-dynamic-jsonld" type="application/ld+json">${jsonLd}</script>`,
           { html: true }
         );
+      },
+    });
+  }
+  if (metadata.keywords?.length) {
+    const keywords = metadata.keywords
+      .map((keyword) => sanitizeString(keyword, 80))
+      .filter(Boolean)
+      .join(', ')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;');
+    rewriter.on('head', {
+      element(element) {
+        element.append(`<meta name="keywords" content="${keywords}">`, { html: true });
       },
     });
   }
@@ -1142,6 +1167,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
         description: getProductSeoDescription(product),
         canonicalPath: `/product/${encodeURIComponent(product.slug)}`,
         image: product.images[0],
+        keywords: product.seoKeywords,
         productPage: true,
         noIndex: product.isShowcaseDemo,
         structuredData: createProductStructuredData(product),

@@ -7,6 +7,7 @@ export interface PageSeoMetadata {
   title: string;
   description: string;
   canonicalPath: string;
+  keywords?: string[];
   noIndex?: boolean;
 }
 
