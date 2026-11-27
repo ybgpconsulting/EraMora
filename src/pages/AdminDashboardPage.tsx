@@ -48,6 +48,8 @@ export const AdminDashboardPage: React.FC = () => {
   // Product editor state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newProductOpen, setNewProductOpen] = useState(false);
+  const [newProductDetailsOpen, setNewProductDetailsOpen] = useState(false);
+  const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const defaultProductImage = '/brand/eramora/campaigns/fragrance-art.jpg';
   const [prodForm, setProdForm] = useState({
@@ -55,8 +57,8 @@ export const AdminDashboardPage: React.FC = () => {
     subtitle: '',
     categoryId: '',
     description: '',
-    variantLabel: '220g Amber Jar',
-    variantSize: '220g',
+    variantLabel: '',
+    variantSize: '',
     price: '',
     compareAtPrice: 0,
     stock: 0,
@@ -271,6 +273,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsCreatingProduct(true);
     try {
       const res = await fetch('/api/admin/products', {
         method: 'POST',
@@ -278,20 +281,22 @@ export const AdminDashboardPage: React.FC = () => {
         body: JSON.stringify({
           name: prodForm.name,
           subtitle: prodForm.subtitle,
-          categoryId: prodForm.categoryId || categories[0]?.id,
+          categoryId: prodForm.categoryId,
           description: prodForm.description,
           images: prodForm.images,
-          variants: [
-            {
-              id: `var-${Date.now()}`,
-              label: prodForm.variantLabel,
-              size: prodForm.variantSize,
-              price: Number(prodForm.price) || 0,
-              compareAtPrice: prodForm.compareAtPrice > 0 ? Number(prodForm.compareAtPrice) : undefined,
-              stock: Number(prodForm.stock),
-              sku: prodForm.sku.trim(),
-            },
-          ],
+          variants: prodForm.isShowcaseDemo && (!prodForm.variantLabel.trim() || !prodForm.variantSize.trim())
+            ? undefined
+            : [
+                {
+                  id: `var-${Date.now()}`,
+                  label: prodForm.variantLabel,
+                  size: prodForm.variantSize,
+                  price: Number(prodForm.price) || 0,
+                  compareAtPrice: prodForm.compareAtPrice > 0 ? Number(prodForm.compareAtPrice) : undefined,
+                  stock: Number(prodForm.stock),
+                  sku: prodForm.sku.trim(),
+                },
+              ],
           isShowcaseDemo: prodForm.isShowcaseDemo,
           isFeatured: prodForm.isFeatured,
           isBestseller: prodForm.isBestseller,
@@ -305,15 +310,21 @@ export const AdminDashboardPage: React.FC = () => {
         notify(data.error || 'Could not create product.', 'error');
         return;
       }
-      notify('Product added to catalogue.', 'success');
+      notify(
+        prodForm.isShowcaseDemo
+          ? 'Showcase concept saved. It appears in the shop as unavailable to purchase.'
+          : 'Product published to the catalogue.',
+        'success'
+      );
       setNewProductOpen(false);
+      setNewProductDetailsOpen(false);
       setProdForm((p) => ({
         ...p,
         name: '',
         subtitle: '',
         description: '',
-        variantLabel: '220g Amber Jar',
-        variantSize: '220g',
+        variantLabel: '',
+        variantSize: '',
         price: '',
         compareAtPrice: 0,
         stock: 0,
@@ -329,6 +340,8 @@ export const AdminDashboardPage: React.FC = () => {
       await Promise.all([loadAdminData(), refreshCatalog()]);
     } catch {
       notify('Could not create product. Check your connection and try again.', 'error');
+    } finally {
+      setIsCreatingProduct(false);
     }
   };
 
@@ -590,7 +603,15 @@ export const AdminDashboardPage: React.FC = () => {
               {selectedCategory && (
                 <button
                   type="button"
-                  onClick={() => setNewProductOpen((open) => !open)}
+                  onClick={() => {
+                    if (newProductOpen) {
+                      setNewProductOpen(false);
+                      return;
+                    }
+                    setProdForm((form) => ({ ...form, categoryId: selectedCategory.id }));
+                    setNewProductDetailsOpen(false);
+                    setNewProductOpen(true);
+                  }}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-[#2C1E16] px-4 py-2.5 text-xs font-medium text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
                 >
                   <Plus aria-hidden="true" className="h-3.5 w-3.5" />
@@ -674,9 +695,15 @@ export const AdminDashboardPage: React.FC = () => {
           {selectedCategory && (
             <>
           {newProductOpen && (
-            <form onSubmit={handleCreateProduct} className="p-6 bg-[#F4EFE6]/70 border border-[#2C1E16]/15 space-y-4">
-              <h3 className="font-serif text-xl text-[#2C1E16]">Add New Creation</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleCreateProduct} className="space-y-5 border border-[#2C1E16]/15 bg-[#F4EFE6]/70 p-5 sm:p-6">
+              <div>
+                <h3 className="font-serif text-xl text-[#2C1E16]">Add a product</h3>
+                <p className="mt-1 text-xs leading-relaxed text-[#6B584C]">
+                  Start with a name and category. Save a showcase concept, or add the required details to publish a product.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label htmlFor="new-product-name" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
                     Product name *
@@ -687,139 +714,39 @@ export const AdminDashboardPage: React.FC = () => {
                     required
                     value={prodForm.name}
                     onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })}
-                    placeholder="e.g. Oud & Velvet Amber"
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-product-subtitle" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Key notes / subtitle
-                  </label>
-                  <input
-                    id="new-product-subtitle"
-                    type="text"
-                    required={!prodForm.isShowcaseDemo}
-                    value={prodForm.subtitle}
-                    onChange={(e) => setProdForm({ ...prodForm, subtitle: e.target.value })}
-                    placeholder="e.g. Saffron · Black Tea · Sandalwood"
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                    placeholder="Enter the product name"
+                    className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
                   <label htmlFor="new-product-category" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Category
+                    Category *
                   </label>
                   <select
                     id="new-product-category"
-                    value={prodForm.categoryId || categories[0]?.id}
+                    required
+                    value={prodForm.categoryId}
                     onChange={(e) => setProdForm({ ...prodForm, categoryId: e.target.value })}
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                    className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
                   >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
+                    <option value="" disabled>Choose a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label htmlFor="new-product-variant" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Variant label *
-                  </label>
-                  <input
-                    id="new-product-variant"
-                    type="text"
-                    required
-                    value={prodForm.variantLabel}
-                    onChange={(e) => setProdForm({ ...prodForm, variantLabel: e.target.value })}
-                    placeholder="e.g. 220g Amber Jar"
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-product-variant-size" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Variant size *
-                  </label>
-                  <input
-                    id="new-product-variant-size"
-                    type="text"
-                    required
-                    value={prodForm.variantSize}
-                    onChange={(e) => setProdForm({ ...prodForm, variantSize: e.target.value })}
-                    placeholder="e.g. 50 ml"
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-product-price" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Price (INR) {prodForm.isShowcaseDemo ? '(optional for demo)' : '*'}
-                  </label>
-                  <input
-                    id="new-product-price"
-                    type="number"
-                    required={!prodForm.isShowcaseDemo}
-                    min={prodForm.isShowcaseDemo ? 0 : 1}
-                    value={prodForm.price}
-                    onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })}
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-product-sku" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    SKU {prodForm.isShowcaseDemo ? '(optional for demo)' : '*'}
-                  </label>
-                  <input
-                    id="new-product-sku"
-                    type="text"
-                    required={!prodForm.isShowcaseDemo}
-                    value={prodForm.sku}
-                    onChange={(e) => setProdForm({ ...prodForm, sku: e.target.value })}
-                    placeholder="Enter approved SKU"
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-product-stock" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                    Stock quantity *
-                  </label>
-                  <input
-                    id="new-product-stock"
-                    type="number"
-                    required
-                    min={0}
-                    value={prodForm.stock}
-                    onChange={(e) => setProdForm({ ...prodForm, stock: Number(e.target.value) })}
-                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                  />
-                </div>
               </div>
 
-              <div>
-                <label htmlFor="new-product-description" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
-                  Product description
-                </label>
-                <textarea
-                  id="new-product-description"
-                  rows={3}
-                  required={!prodForm.isShowcaseDemo}
-                  minLength={prodForm.isShowcaseDemo ? undefined : 40}
-                  value={prodForm.description}
-                  onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })}
-                  placeholder="Describe the fragrance, materials, and product details."
-                  className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   disabled={isUploadingImage}
                   aria-busy={isUploadingImage}
                   onClick={() => productImageInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 border border-[#2C1E16]/20 px-3 py-2 bg-[#FAF7F2] disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex min-h-10 items-center gap-2 border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-xs disabled:cursor-wait disabled:opacity-60"
                 >
-                  <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>{isUploadingImage ? 'Uploading image…' : 'Upload Product Image'}</span>
+                  <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{isUploadingImage ? 'Uploading image…' : 'Add product photo (optional for concepts)'}</span>
                 </button>
                 <input
                   ref={productImageInputRef}
@@ -834,31 +761,221 @@ export const AdminDashboardPage: React.FC = () => {
                     if (file) void handleImageUpload(file);
                   }}
                 />
-                <label className="inline-flex items-center gap-1.5">
+                <label htmlFor="new-product-draft" className="inline-flex min-h-10 items-center gap-2 text-xs text-[#2C1E16]">
                   <input
-                    type="checkbox"
-                    checked={prodForm.isFeatured}
-                    onChange={(e) => setProdForm({ ...prodForm, isFeatured: e.target.checked })}
-                  />
-                  <span>Featured</span>
-                </label>
-                <label className="inline-flex items-center gap-1.5">
-                  <input
+                    id="new-product-draft"
                     type="checkbox"
                     checked={prodForm.isShowcaseDemo}
-                    onChange={(e) => setProdForm({ ...prodForm, isShowcaseDemo: e.target.checked })}
+                    onChange={(e) => {
+                      const isDraft = e.target.checked;
+                      setProdForm({ ...prodForm, isShowcaseDemo: isDraft });
+                      if (!isDraft) setNewProductDetailsOpen(true);
+                    }}
                   />
-                  <span>Showcase demo (not for sale)</span>
+                  Save as a showcase concept (visible, unavailable to purchase)
                 </label>
               </div>
               <p className="text-xs leading-relaxed text-[#6B584C]">
-                New products start as demo concepts with zero stock and are excluded from search indexing. Only
-                uncheck this after the product details, price, and availability have been approved.
+                Showcase concepts appear in the shop but cannot be purchased. Publishing requires approved product
+                details, a price, stock quantity, SKU, and a product-specific photo.
               </p>
+
+              <button
+                type="button"
+                aria-expanded={newProductDetailsOpen}
+                aria-controls={newProductDetailsOpen ? 'new-product-details' : undefined}
+                disabled={!prodForm.isShowcaseDemo}
+                onClick={() => setNewProductDetailsOpen((open) => !open)}
+                className="inline-flex min-h-10 items-center gap-2 text-xs font-medium text-[#2C1E16] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] disabled:cursor-default disabled:no-underline"
+              >
+                {prodForm.isShowcaseDemo
+                  ? newProductDetailsOpen ? 'Hide additional details' : 'Add description and SEO'
+                  : 'Required publishing details'}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`h-3.5 w-3.5 transition-transform ${newProductDetailsOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {newProductDetailsOpen && (
+                <div id="new-product-details" className="space-y-4 border-t border-[#2C1E16]/10 pt-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="new-product-subtitle" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                        Short subtitle {!prodForm.isShowcaseDemo && '*'}
+                      </label>
+                      <input
+                        id="new-product-subtitle"
+                        type="text"
+                        required={!prodForm.isShowcaseDemo}
+                        value={prodForm.subtitle}
+                        onChange={(e) => setProdForm({ ...prodForm, subtitle: e.target.value })}
+                        placeholder="A short customer-friendly summary"
+                        className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="new-product-description" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                        Product description {!prodForm.isShowcaseDemo && '*'}
+                      </label>
+                      <textarea
+                        id="new-product-description"
+                        rows={3}
+                        required={!prodForm.isShowcaseDemo}
+                        minLength={prodForm.isShowcaseDemo ? undefined : 40}
+                        value={prodForm.description}
+                        onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })}
+                        placeholder="Describe the product and its confirmed details."
+                        className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {!prodForm.isShowcaseDemo && (
+                    <>
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                          <label htmlFor="new-product-variant" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                            Variant label *
+                          </label>
+                          <input
+                            id="new-product-variant"
+                            type="text"
+                            required
+                            value={prodForm.variantLabel}
+                            onChange={(e) => setProdForm({ ...prodForm, variantLabel: e.target.value })}
+                            placeholder="e.g. Standard"
+                            className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="new-product-variant-size" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                            Variant size *
+                          </label>
+                          <input
+                            id="new-product-variant-size"
+                            type="text"
+                            required
+                            value={prodForm.variantSize}
+                            onChange={(e) => setProdForm({ ...prodForm, variantSize: e.target.value })}
+                            placeholder="Enter the confirmed size or option"
+                            className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="new-product-price" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                            Price (INR) *
+                          </label>
+                          <input
+                            id="new-product-price"
+                            type="number"
+                            required
+                            min={1}
+                            value={prodForm.price}
+                            onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })}
+                            className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="new-product-sku" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                            SKU *
+                          </label>
+                          <input
+                            id="new-product-sku"
+                            type="text"
+                            required
+                            value={prodForm.sku}
+                            onChange={(e) => setProdForm({ ...prodForm, sku: e.target.value })}
+                            placeholder="Enter a unique SKU"
+                            className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="new-product-stock" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                            Stock quantity *
+                          </label>
+                          <input
+                            id="new-product-stock"
+                            type="number"
+                            required
+                            min={0}
+                            value={prodForm.stock}
+                            onChange={(e) => setProdForm({ ...prodForm, stock: Number(e.target.value) })}
+                            className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs leading-relaxed text-[#6B584C]">
+                        Confirm stock before publishing. Products with zero stock remain unavailable for purchase.
+                      </p>
+                    </>
+                  )}
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="new-product-seo-title" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                        SEO title (optional)
+                      </label>
+                      <input
+                        id="new-product-seo-title"
+                        type="text"
+                        value={prodForm.seoTitle}
+                        onChange={(e) => setProdForm({ ...prodForm, seoTitle: e.target.value })}
+                        className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="new-product-seo-description" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                        SEO description (optional)
+                      </label>
+                      <textarea
+                        id="new-product-seo-description"
+                        rows={2}
+                        value={prodForm.seoDescription}
+                        onChange={(e) => setProdForm({ ...prodForm, seoDescription: e.target.value })}
+                        className="w-full border border-[#2C1E16]/20 bg-[#FAF7F2] px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {!prodForm.isShowcaseDemo && (
+                    <div className="flex flex-wrap gap-4 text-xs">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={prodForm.isFeatured}
+                          onChange={(e) => setProdForm({ ...prodForm, isFeatured: e.target.checked })}
+                        />
+                        Featured product
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={prodForm.isBestseller}
+                          onChange={(e) => setProdForm({ ...prodForm, isBestseller: e.target.checked })}
+                        />
+                        Bestseller
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={prodForm.isNewArrival}
+                          onChange={(e) => setProdForm({ ...prodForm, isNewArrival: e.target.checked })}
+                        />
+                        New arrival
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {prodForm.images.length > 0 && (
                 <div className="space-y-2" aria-live="polite">
-                  <p className="text-xs font-medium text-[#6B584C]">Product image preview</p>
+                  <p className="text-xs font-medium text-[#6B584C]">
+                    {prodForm.images.every((image) => image === defaultProductImage)
+                      ? 'Campaign artwork placeholder (replace before publishing)'
+                      : 'Product image preview'}
+                  </p>
                   <div className="flex flex-wrap gap-3">
                     {prodForm.images.map((image, index) => (
                       <img
@@ -879,8 +996,17 @@ export const AdminDashboardPage: React.FC = () => {
                 </p>
               )}
 
-              <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-6 py-2.5 text-xs uppercase tracking-wider cursor-pointer">
-                Save Product
+              <button
+                type="submit"
+                disabled={isCreatingProduct || isUploadingImage}
+                aria-busy={isCreatingProduct}
+                className="min-h-10 bg-[#2C1E16] px-6 py-2.5 text-xs uppercase tracking-wider text-[#FAF7F2] cursor-pointer disabled:cursor-wait disabled:opacity-60"
+              >
+                {isCreatingProduct
+                  ? 'Saving…'
+                  : prodForm.isShowcaseDemo
+                    ? 'Save concept'
+                    : 'Publish product'}
               </button>
             </form>
           )}
