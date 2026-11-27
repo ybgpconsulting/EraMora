@@ -205,7 +205,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 ? `${product.name} sample concept image ${activeImgIdx + 1}`
                 : product.imageAlt || `${product.name} — view ${activeImgIdx + 1}`}
               loading="eager"
-              className="w-full h-full object-cover transition-transform duration-700 ease-out hover:scale-105"
+              className={`w-full h-full ${
+                product.categoryName === 'DIY Colouring Kits' ? 'object-contain p-2' : 'object-cover'
+              } transition-transform duration-700 ease-out hover:scale-105`}
             />
             {product.badges[0] && (
               <span className="absolute left-4 top-4 border border-[#C5A059]/40 bg-[#FAF7F2]/95 px-3 py-1.5 text-[9px] uppercase tracking-[0.24em] text-[#2C1E16] backdrop-blur-md shadow-xs">
