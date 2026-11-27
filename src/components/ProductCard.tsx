@@ -56,7 +56,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         >
           <ImageWithFallback
             src={getProductImage(product)}
-            alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.name}
+            alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.imageAlt || product.name}
             fallbackTitle={product.name}
             className="h-full w-full object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.05]"
           />

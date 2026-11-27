@@ -7,6 +7,7 @@ import {
   SEEDED_SAMPLE_PRODUCT_IDS,
   type DatabaseSchema,
 } from './seed';
+import { ensureDiyColouringKitCatalog } from './diy-colouring-kits';
 
 const SESSION_COOKIE = 'eramora_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
@@ -173,6 +174,11 @@ export async function initDb(env: Env): Promise<void> {
               sampleProductIds.has(product.id) ? normalizeSeededSampleProduct(product) : product
             )
           : [];
+        if (storedSchemaVersion < 6) {
+          data.categories = Array.isArray(data.categories) ? data.categories : [];
+          data.products = Array.isArray(data.products) ? data.products : [];
+          ensureDiyColouringKitCatalog(data.categories, data.products);
+        }
         data.schemaVersion = DATABASE_SCHEMA_VERSION;
 
         const result = await env.DB.prepare(

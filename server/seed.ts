@@ -7,8 +7,9 @@ import type {
   AdminUser,
   Product,
 } from '../src/types/store';
+import { ensureDiyColouringKitCatalog } from './diy-colouring-kits';
 
-export const DATABASE_SCHEMA_VERSION = 5;
+export const DATABASE_SCHEMA_VERSION = 6;
 
 export const SEEDED_SAMPLE_PRODUCT_IDS = Array.from(
   { length: 25 },
@@ -972,10 +973,13 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
     whatsappOrderingEnabled: true,
   };
 
+  const safeProducts = products.map(normalizeSeededSampleProduct);
+  ensureDiyColouringKitCatalog(categories, safeProducts, now);
+
   return {
     schemaVersion: DATABASE_SCHEMA_VERSION,
     categories,
-    products: products.map(normalizeSeededSampleProduct),
+    products: safeProducts,
     users,
     banners,
     settings,

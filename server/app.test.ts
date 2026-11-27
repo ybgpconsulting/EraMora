@@ -4,6 +4,7 @@ import { handleRequest } from './app';
 import type { Env } from './env';
 import { signSessionToken } from './db';
 import { DATABASE_SCHEMA_VERSION, DEFAULT_ADMIN_HASH } from './seed';
+import { createDiyColouringKitProducts } from './diy-colouring-kits';
 import worker from '../worker';
 
 test('order and customer-data endpoints are disabled', async () => {
@@ -193,6 +194,7 @@ test('disabled cancellation endpoint does not mutate historical order or stock d
 });
 
 test('public product feed and sitemap exclude demo and archived products', async () => {
+  const diyProducts = createDiyColouringKitProducts('2026-03-10T00:00:00.000Z');
   const product = {
     id: 'internal-product-id',
     slug: 'saffron-noir',
@@ -225,6 +227,7 @@ test('public product feed and sitemap exclude demo and archived products', async
       approvedProduct,
       ...incompleteProducts,
       { ...product, slug: 'archived-item', isArchived: true, isShowcaseDemo: false },
+      ...diyProducts,
     ],
     reviews: [{ id: 'legacy-review', productId: product.id, authorName: 'Historical Customer' }],
   });
@@ -264,7 +267,25 @@ test('public product feed and sitemap exclude demo and archived products', async
   };
 
   assert.equal(feedResponse.status, 200);
-  assert.deepEqual(feed.products.map((item) => item.slug), ['approved-fragrance']);
+  const diySlugs = diyProducts.map((item) => item.slug);
+  assert.deepEqual(feed.products.map((item) => item.slug), ['approved-fragrance', ...diySlugs]);
+  const diyFeedItems = feed.products.filter((item) => diySlugs.includes(item.slug));
+  assert.equal(diyFeedItems.length, 13);
+  assert.ok(diyFeedItems.every((item) => item.variants[0].currency === 'INR'));
+  assert.ok(diyFeedItems.every((item) => item.variants[0].availability === 'out-of-stock'));
+  assert.ok(diyFeedItems.every((item) => item.images[0].includes('/products/diy-colouring-kits/')));
+
+  const categoryResponse = await handleRequest(
+    new Request('https://store.example/api/products?category=diy-colouring-kits'),
+    env
+  );
+  const categoryProducts = (await categoryResponse.json()) as Array<{
+    slug: string;
+    variants: Array<{ price: number; stock: number }>;
+  }>;
+  assert.equal(categoryResponse.status, 200);
+  assert.equal(categoryProducts.length, 13);
+  assert.ok(categoryProducts.every((item) => item.variants[0].price === 199 && item.variants[0].stock === 0));
 
   const catalogResponse = await handleRequest(new Request('https://store.example/api/products'), env);
   const catalog = (await catalogResponse.json()) as Array<{ slug: string }>;
@@ -302,6 +323,7 @@ test('public product feed and sitemap exclude demo and archived products', async
   let robotsContent = '';
   let titleContent = '';
   let canonicalHref = '';
+  let headContent = '';
   const previousHtmlRewriter = Reflect.get(globalThis, 'HTMLRewriter');
   class HtmlRewriterStub {
     on(selector: string, handlers: unknown): this {
@@ -320,6 +342,11 @@ test('public product feed and sitemap exclude demo and archived products', async
           element: (element: { setAttribute: (name: string, value: string) => void }) => void;
         };
         elementHandler.element({ setAttribute: (_name, value) => (canonicalHref = value) });
+      } else if (selector === 'head') {
+        const elementHandler = handlers as {
+          element: (element: { append: (value: string) => void }) => void;
+        };
+        elementHandler.element({ append: (value) => (headContent += value) });
       }
       return this;
     }
@@ -336,6 +363,21 @@ test('public product feed and sitemap exclude demo and archived products', async
     );
     assert.equal(demoPageResponse.status, 200);
     assert.equal(robotsContent, 'noindex, nofollow');
+
+    titleContent = '';
+    canonicalHref = '';
+    robotsContent = '';
+    headContent = '';
+    const kitPageResponse = await handleRequest(
+      new Request(`https://store.example/product/${diySlugs[0]}`),
+      env
+    );
+    assert.equal(kitPageResponse.status, 200);
+    assert.equal(titleContent, diyProducts[0].seoTitle);
+    assert.equal(canonicalHref, `https://eramora.in/product/${diySlugs[0]}`);
+    assert.equal(robotsContent, 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+    assert.ok(headContent.includes('name="keywords"'));
+    assert.ok(headContent.includes(diyProducts[0].seoKeywords?.[0] || ''));
 
     for (const path of [
       '/curated-fragrances',

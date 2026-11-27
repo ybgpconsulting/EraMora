@@ -945,6 +945,33 @@ export const AdminDashboardPage: React.FC = () => {
                     className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
                   />
                 </div>
+                <div>
+                  <label htmlFor="edit-product-seo-keywords" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                    SEO keywords (comma separated)
+                  </label>
+                  <input
+                    id="edit-product-seo-keywords"
+                    type="text"
+                    value={(editingProduct.seoKeywords || []).join(', ')}
+                    onChange={(e) => setEditingProduct({
+                      ...editingProduct,
+                      seoKeywords: e.target.value.split(',').map((keyword) => keyword.trim()).filter(Boolean),
+                    })}
+                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="edit-product-image-alt" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                  Product image alt text
+                </label>
+                <input
+                  id="edit-product-image-alt"
+                  type="text"
+                  value={editingProduct.imageAlt || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, imageAlt: e.target.value })}
+                  className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                />
               </div>
               <div>
                 <label htmlFor="edit-product-description" className="mb-1.5 block text-xs font-medium text-[#6B584C]">

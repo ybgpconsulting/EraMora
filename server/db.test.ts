@@ -97,7 +97,9 @@ test('versioned startup migration preserves catalogue edits and administrator da
     'Explore gifting concepts and ask our concierge about current options and availability.'
   );
   assert.equal(migrated.schemaVersion, DATABASE_SCHEMA_VERSION);
-  const normalizedSamples = migrated.products.slice(1);
+  const normalizedSamples = migrated.products.filter((product) =>
+    SEEDED_SAMPLE_PRODUCT_IDS.includes(product.id)
+  );
   assert.equal(normalizedSamples.length, 25);
   for (const product of normalizedSamples) {
     assert.equal(product.isShowcaseDemo, true);
@@ -115,6 +117,12 @@ test('versioned startup migration preserves catalogue edits and administrator da
     assert.equal(product.reviewCount, 0);
     assert.match(product.description, /sample catalogue concept only/i);
   }
+  const diyProducts = migrated.products.filter((product) => product.id.startsWith('diy-colouring-kit-'));
+  assert.equal(diyProducts.length, 13);
+  assert.equal(
+    migrated.categories.find((category) => category.slug === 'diy-colouring-kits')?.description,
+    'Discover creative DIY colouring kits featuring decorative jars, bowls, trays and trinket dishes. Personalise your favourite designs with your own creative touch.'
+  );
   for (const retiredField of ['orders', 'reviews', 'enquiries', 'abandonedCarts', 'coupons']) {
     assert.equal(retiredField in migrated, false);
   }

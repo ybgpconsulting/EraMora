@@ -30,6 +30,7 @@ npm run dev
 ```
 
 On the first API request the Worker creates the D1 schema and seeds an initial demo catalogue only when `app_state` is empty. Existing catalogues are never replaced automatically. A versioned one-time migration removes retired order/customer data and corrects legacy demo image paths while preserving catalogue and administrator edits.
+The catalogue migration adds the 13 DIY Colouring Kits idempotently and archives incomplete legacy listings without deleting their records.
 
 - Local admin: `admin@eramora.in` / the password set in `.dev.vars` before the first API request
 

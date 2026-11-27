@@ -43,8 +43,10 @@ export interface Product {
   isBestseller: boolean;
   isNewArrival: boolean;
   isArchived: boolean;
+  imageAlt?: string;
   seoTitle?: string;
   seoDescription?: string;
+  seoKeywords?: string[];
   ratingAverage: number;
   reviewCount: number;
   createdAt: string;
