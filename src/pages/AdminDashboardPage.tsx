@@ -28,6 +28,7 @@ type AdminTab = 'products' | 'announcement' | 'banners' | 'settings';
 export const AdminDashboardPage: React.FC = () => {
   const { user, login, logout, navigate, refreshCatalog, refreshConfig, categories, notify } = useStore();
   const productImageInputRef = useRef<HTMLInputElement>(null);
+  const editProductImageInputRef = useRef<HTMLInputElement>(null);
 
   // Admin Login state
   const [loginEmail, setLoginEmail] = useState('');
@@ -62,9 +63,9 @@ export const AdminDashboardPage: React.FC = () => {
     sku: '',
     images: [defaultProductImage],
     isShowcaseDemo: true,
-    isFeatured: true,
+    isFeatured: false,
     isBestseller: false,
-    isNewArrival: true,
+    isNewArrival: false,
     seoTitle: '',
     seoDescription: '',
   });
@@ -103,15 +104,21 @@ export const AdminDashboardPage: React.FC = () => {
   const loadAdminData = useCallback(async () => {
     if (!user || user.role !== 'admin') return;
     try {
-      const [prodRes, cfgRes] = await Promise.all([fetch('/api/admin/products'), fetch('/api/config/public')]);
+      const [prodRes, cfgRes, settingsRes] = await Promise.all([
+        fetch('/api/admin/products'),
+        fetch('/api/config/public'),
+        fetch('/api/admin/settings'),
+      ]);
       if (prodRes.ok) {
         const prods = (await prodRes.json()) as Product[];
         setAdminProducts(prods);
       }
       if (cfgRes.ok) {
         const cfg = await cfgRes.json();
-        setSettingsForm(cfg.settings as BusinessSettings);
         setBannersForm(cfg.banners as BannerConfig);
+      }
+      if (settingsRes.ok) {
+        setSettingsForm((await settingsRes.json()) as BusinessSettings);
       }
     } catch {
       notify('Could not refresh admin data.', 'error');
@@ -282,7 +289,7 @@ export const AdminDashboardPage: React.FC = () => {
               price: Number(prodForm.price) || 0,
               compareAtPrice: prodForm.compareAtPrice > 0 ? Number(prodForm.compareAtPrice) : undefined,
               stock: Number(prodForm.stock),
-              sku: prodForm.sku || `ERA-${Math.floor(100 + Math.random() * 900)}`,
+              sku: prodForm.sku.trim(),
             },
           ],
           isShowcaseDemo: prodForm.isShowcaseDemo,
@@ -311,10 +318,11 @@ export const AdminDashboardPage: React.FC = () => {
         compareAtPrice: 0,
         stock: 0,
         sku: '',
+        images: [defaultProductImage],
         isShowcaseDemo: true,
-        isFeatured: true,
+        isFeatured: false,
         isBestseller: false,
-        isNewArrival: true,
+        isNewArrival: false,
         seoTitle: '',
         seoDescription: '',
       }));
@@ -670,6 +678,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <input
                     id="new-product-subtitle"
                     type="text"
+                    required={!prodForm.isShowcaseDemo}
                     value={prodForm.subtitle}
                     onChange={(e) => setProdForm({ ...prodForm, subtitle: e.target.value })}
                     placeholder="e.g. Saffron · Black Tea · Sandalwood"
@@ -708,6 +717,20 @@ export const AdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <label htmlFor="new-product-variant-size" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                    Variant size *
+                  </label>
+                  <input
+                    id="new-product-variant-size"
+                    type="text"
+                    required
+                    value={prodForm.variantSize}
+                    onChange={(e) => setProdForm({ ...prodForm, variantSize: e.target.value })}
+                    placeholder="e.g. 50 ml"
+                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
                   <label htmlFor="new-product-price" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
                     Price (INR) {prodForm.isShowcaseDemo ? '(optional for demo)' : '*'}
                   </label>
@@ -718,6 +741,20 @@ export const AdminDashboardPage: React.FC = () => {
                     min={prodForm.isShowcaseDemo ? 0 : 1}
                     value={prodForm.price}
                     onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })}
+                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="new-product-sku" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                    SKU {prodForm.isShowcaseDemo ? '(optional for demo)' : '*'}
+                  </label>
+                  <input
+                    id="new-product-sku"
+                    type="text"
+                    required={!prodForm.isShowcaseDemo}
+                    value={prodForm.sku}
+                    onChange={(e) => setProdForm({ ...prodForm, sku: e.target.value })}
+                    placeholder="Enter approved SKU"
                     className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
                   />
                 </div>
@@ -744,6 +781,8 @@ export const AdminDashboardPage: React.FC = () => {
                 <textarea
                   id="new-product-description"
                   rows={3}
+                  required={!prodForm.isShowcaseDemo}
+                  minLength={prodForm.isShowcaseDemo ? undefined : 40}
                   value={prodForm.description}
                   onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })}
                   placeholder="Describe the fragrance, materials, and product details."
@@ -812,6 +851,13 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
               )}
+              {!prodForm.isShowcaseDemo && !prodForm.images.some((image) =>
+                /^\/uploads\/[A-Za-z0-9._-]+$/.test(image)
+              ) && (
+                <p className="text-xs text-[#8A3D2D]" role="alert">
+                  Upload at least one product-specific image before publishing; campaign artwork is not accepted.
+                </p>
+              )}
 
               <button type="submit" className="bg-[#2C1E16] text-[#FAF7F2] px-6 py-2.5 text-xs uppercase tracking-wider cursor-pointer">
                 Save Product
@@ -840,6 +886,28 @@ export const AdminDashboardPage: React.FC = () => {
                     onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
                     className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
                   />
+                </div>
+                <div>
+                  <label htmlFor="edit-product-category" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                    Category
+                  </label>
+                  <select
+                    id="edit-product-category"
+                    value={editingProduct.categoryId}
+                    onChange={(e) => {
+                      const category = categories.find((entry) => entry.id === e.target.value);
+                      setEditingProduct({
+                        ...editingProduct,
+                        categoryId: e.target.value,
+                        categoryName: category?.name || editingProduct.categoryName,
+                      });
+                    }}
+                    className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label htmlFor="edit-product-subtitle" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
@@ -878,10 +946,80 @@ export const AdminDashboardPage: React.FC = () => {
                   />
                 </div>
               </div>
+              <div>
+                <label htmlFor="edit-product-description" className="mb-1.5 block text-xs font-medium text-[#6B584C]">
+                  Product description
+                </label>
+                <textarea
+                  id="edit-product-description"
+                  rows={4}
+                  value={editingProduct.description}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-wider text-[#6B584C]">Product images</p>
+                  <button
+                    type="button"
+                    disabled={isUploadingImage}
+                    aria-busy={isUploadingImage}
+                    onClick={() => editProductImageInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 border border-[#2C1E16]/20 px-3 py-2 bg-[#FAF7F2] text-xs disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                    {isUploadingImage ? 'Uploading image…' : 'Upload product image'}
+                  </button>
+                  <input
+                    ref={editProductImageInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const input = e.currentTarget;
+                      const file = input.files?.[0];
+                      input.value = '';
+                      if (file) void handleImageUpload(file);
+                    }}
+                  />
+                </div>
+                {editingProduct.images.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {editingProduct.images.map((image, index) => (
+                      <div key={`${image}-${index}`} className="space-y-1">
+                        <img
+                          src={image}
+                          alt={`Product image ${index + 1}`}
+                          className="h-20 w-20 border border-[#2C1E16]/15 object-cover"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Remove product image ${index + 1}`}
+                          onClick={() => setEditingProduct({
+                            ...editingProduct,
+                            images: editingProduct.images.filter((_, imageIndex) => imageIndex !== index),
+                          })}
+                          className="text-xs text-[#8A3D2D] underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!editingProduct.isShowcaseDemo && !editingProduct.images.some((image) =>
+                  /^\/uploads\/[A-Za-z0-9._-]+$/.test(image)
+                ) && (
+                  <p className="text-xs text-[#8A3D2D]" role="alert">
+                    Upload a product-specific image before publishing; campaign artwork is not accepted.
+                  </p>
+                )}
+              </div>
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wider text-[#6B584C]">Variants & Stock</p>
                 {editingProduct.variants.map((v, idx) => (
-                  <div key={v.id} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div key={v.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                     <div>
                       <label htmlFor={`edit-variant-label-${idx}`} className="mb-1 block text-xs text-[#6B584C]">
                         Variant label
@@ -893,6 +1031,22 @@ export const AdminDashboardPage: React.FC = () => {
                         onChange={(e) => {
                           const vars = [...editingProduct.variants];
                           vars[idx] = { ...v, label: e.target.value };
+                          setEditingProduct({ ...editingProduct, variants: vars });
+                        }}
+                        className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`edit-variant-size-${idx}`} className="mb-1 block text-xs text-[#6B584C]">
+                        Variant size
+                      </label>
+                      <input
+                        id={`edit-variant-size-${idx}`}
+                        type="text"
+                        value={v.size}
+                        onChange={(e) => {
+                          const vars = [...editingProduct.variants];
+                          vars[idx] = { ...v, size: e.target.value };
                           setEditingProduct({ ...editingProduct, variants: vars });
                         }}
                         className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-2.5 py-1.5 text-xs"
@@ -912,6 +1066,22 @@ export const AdminDashboardPage: React.FC = () => {
                           setEditingProduct({ ...editingProduct, variants: vars });
                         }}
                         className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-2.5 py-1.5 text-xs tabular-nums"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`edit-variant-sku-${idx}`} className="mb-1 block text-xs text-[#6B584C]">
+                        SKU
+                      </label>
+                      <input
+                        id={`edit-variant-sku-${idx}`}
+                        type="text"
+                        value={v.sku}
+                        onChange={(e) => {
+                          const vars = [...editingProduct.variants];
+                          vars[idx] = { ...v, sku: e.target.value };
+                          setEditingProduct({ ...editingProduct, variants: vars });
+                        }}
+                        className="w-full bg-[#FAF7F2] border border-[#2C1E16]/20 px-2.5 py-1.5 text-xs"
                       />
                     </div>
                     <div>

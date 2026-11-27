@@ -3,7 +3,8 @@ import test from 'node:test';
 import { handleRequest } from './app';
 import type { Env } from './env';
 import { signSessionToken } from './db';
-import { DEFAULT_ADMIN_HASH } from './seed';
+import { DATABASE_SCHEMA_VERSION, DEFAULT_ADMIN_HASH } from './seed';
+import worker from '../worker';
 
 test('order and customer-data endpoints are disabled', async () => {
   const initialState = {
@@ -213,7 +214,7 @@ test('public product feed and sitemap exclude demo and archived products', async
     isShowcaseDemo: false,
   };
   const storedData = JSON.stringify({
-    schemaVersion: 4,
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     products: [
       product,
       approvedProduct,
@@ -334,7 +335,7 @@ test('public product feed and sitemap exclude demo and archived products', async
 
 test('new products default to unpublished demo concepts and assigned categories cannot be deleted', async () => {
   const initialState = {
-    schemaVersion: 4,
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
     categories: [
       { id: 'cat-1', name: 'Fragrance', slug: 'fragrance', description: '', image: '/image.jpg', featured: true, sortOrder: 1 },
@@ -346,6 +347,7 @@ test('new products default to unpublished demo concepts and assigned categories 
   };
   let storedData = JSON.stringify(initialState);
   let storedVersion = 1;
+  const uploadedImages = new Set(['verified-fragrance.jpg']);
   const fakeDb = {
     batch: async () => [],
     prepare(query: string) {
@@ -355,7 +357,10 @@ test('new products default to unpublished demo concepts and assigned categories 
           values = nextValues;
           return this;
         },
-        first: async <T,>() => ({ data: storedData, version: storedVersion }) as T,
+        first: async <T,>() =>
+          query.startsWith('SELECT key FROM media')
+            ? (uploadedImages.has(String(values[0])) ? { key: String(values[0]) } : null) as T
+            : ({ data: storedData, version: storedVersion }) as T,
         run: async () => {
           if (query.startsWith('UPDATE app_state')) {
             if (values[1] !== storedVersion) return { meta: { changes: 0 } };
@@ -402,12 +407,81 @@ test('new products default to unpublished demo concepts and assigned categories 
     env
   );
   const created = (await createResponse.json()) as {
+    id: string;
     isShowcaseDemo: boolean;
-    variants: Array<{ price: number; stock: number }>;
+    variants: Array<{ price: number; stock: number; sku: string }>;
+    ratingAverage: number;
+    isFeatured: boolean;
+    isNewArrival: boolean;
   };
   assert.equal(createResponse.status, 201);
   assert.equal(created.isShowcaseDemo, true);
-  assert.deepEqual(created.variants.map(({ price, stock }) => ({ price, stock })), [{ price: 0, stock: 0 }]);
+  assert.deepEqual(created.variants.map(({ price, stock, sku }) => ({ price, stock, sku })), [
+    { price: 0, stock: 0, sku: '' },
+  ]);
+  assert.equal(created.ratingAverage, 0);
+  assert.equal(created.isFeatured, false);
+  assert.equal(created.isNewArrival, false);
+
+  const commercialDetails = {
+    name: 'Verified fragrance',
+    subtitle: 'A reviewed fragrance composition',
+    description: 'A product description reviewed and approved for this verified fragrance listing.',
+    categoryId: 'cat-1',
+    images: ['/brand/eramora/campaigns/fragrance-art.jpg'],
+    variants: [{ id: 'var-valid', label: '50 ml', size: '50 ml', price: 2500, stock: 5, sku: 'ERA-VERIFIED-1' }],
+    isShowcaseDemo: false,
+  };
+  const genericImagePublication = await handleRequest(
+    new Request('https://store.example/api/admin/products', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(commercialDetails),
+    }),
+    env
+  );
+  assert.equal(genericImagePublication.status, 400);
+
+  const missingSkuPublication = await handleRequest(
+    new Request('https://store.example/api/admin/products', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...commercialDetails,
+        images: ['/uploads/verified-fragrance.jpg'],
+        variants: [{ ...commercialDetails.variants[0], sku: '' }],
+      }),
+    }),
+    env
+  );
+  assert.equal(missingSkuPublication.status, 400);
+
+  const publishDemoMissingDetails = await handleRequest(
+    new Request(`https://store.example/api/admin/products/${created.id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ isShowcaseDemo: false }),
+    }),
+    env
+  );
+  assert.equal(publishDemoMissingDetails.status, 400);
+
+  const publishDemo = await handleRequest(
+    new Request(`https://store.example/api/admin/products/${created.id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        ...commercialDetails,
+        images: ['/uploads/verified-fragrance.jpg'],
+      }),
+    }),
+    env
+  );
+  const publishedProduct = (await publishDemo.json()) as { isShowcaseDemo: boolean; variants: Array<{ price: number; sku: string }> };
+  assert.equal(publishDemo.status, 200);
+  assert.equal(publishedProduct.isShowcaseDemo, false);
+  assert.equal(publishedProduct.variants[0].price, 2500);
+  assert.equal(publishedProduct.variants[0].sku, 'ERA-VERIFIED-1');
 
   const deleteAssignedCategory = await handleRequest(
     new Request('https://store.example/api/admin/categories/cat-1', { method: 'DELETE', headers }),
@@ -424,8 +498,107 @@ test('new products default to unpublished demo concepts and assigned categories 
   assert.ok(!JSON.parse(storedData).categories.some((category: { id: string }) => category.id === 'cat-empty'));
 });
 
+test('scanner probe paths are blocked before redirects and asset routing while .well-known remains available', async () => {
+  const env = {
+    ENVIRONMENT: 'production',
+    ASSETS: { fetch: async () => new Response('asset', { status: 200 }) },
+  } as unknown as Env;
+  const scannerPaths = [
+    '/ms-edit.php',
+    '/%6d%73-edit.php',
+    '/%256d%2573-edit.php',
+    '/wp-login.php',
+    '/wp-admin/setup.php',
+    '/wp-config.php.bak',
+    '/xmlrpc.php',
+    '/.env',
+    '/.git/config',
+    '/phpmyadmin/index.php',
+    '/phpinfo.php',
+    '/HNAP1',
+    '/boaform/admin/formLogin',
+    '/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php',
+    '/malformed%ZZ/ms-edit.php',
+  ];
+
+  for (const path of scannerPaths) {
+    const response = await handleRequest(new Request(`http://store.example${path}`), env);
+    assert.equal(response.status, 404, `${path} should be rejected before HTTPS redirect`);
+  }
+
+  const workerResponse = await worker.fetch(
+    new Request('https://store.example/ms-edit.php'),
+    env
+  );
+  assert.equal(workerResponse.status, 404);
+  assert.equal(workerResponse.headers.get('cache-control'), 'no-store');
+
+  const wellKnownResponse = await handleRequest(
+    new Request('https://store.example/.well-known/acme-challenge/example-token'),
+    env
+  );
+  assert.equal(wellKnownResponse.status, 200);
+  assert.equal(await wellKnownResponse.text(), 'asset');
+});
+
+test('public config hides the unverified studio address while admins retain access to settings', async () => {
+  const initialState = {
+    schemaVersion: DATABASE_SCHEMA_VERSION,
+    users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
+    categories: [],
+    products: [],
+    banners: {},
+    settings: { brandName: 'ERAMORA', studioAddress: 'Unverified address' },
+  };
+  const storedData = JSON.stringify(initialState);
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      return {
+        bind() {
+          return this;
+        },
+        first: async <T,>() =>
+          query.startsWith('SELECT data, version')
+            ? ({ data: storedData, version: 1 }) as T
+            : null as T,
+        run: async () => ({ meta: { changes: 1 } }),
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    SESSION_SECRET: 'public-config-test-secret-with-at-least-32-characters',
+  } as unknown as Env;
+  const publicResponse = await handleRequest(new Request('https://store.example/api/config/public'), env);
+  const publicConfig = (await publicResponse.json()) as { settings: { studioAddress: string } };
+  assert.equal(publicResponse.status, 200);
+  assert.equal(publicConfig.settings.studioAddress, '');
+
+  const privateResponse = await handleRequest(
+    new Request('https://store.example/api/admin/settings'),
+    env
+  );
+  assert.equal(privateResponse.status, 403);
+
+  const token = await signSessionToken(env, {
+    userId: 'admin-1',
+    role: 'admin',
+    email: 'admin@example.com',
+  });
+  const adminResponse = await handleRequest(
+    new Request('https://store.example/api/admin/settings', {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env
+  );
+  const adminSettings = (await adminResponse.json()) as { studioAddress: string };
+  assert.equal(adminResponse.status, 200);
+  assert.equal(adminSettings.studioAddress, 'Unverified address');
+});
+
 test('login fails closed without a session secret and rejects oversized streamed bodies', async () => {
-  const storedData = JSON.stringify({ schemaVersion: 4, users: [] });
+  const storedData = JSON.stringify({ schemaVersion: DATABASE_SCHEMA_VERSION, users: [] });
   const fakeDb = {
     batch: async () => [],
     prepare(query: string) {
@@ -466,7 +639,7 @@ test('login fails closed without a session secret and rejects oversized streamed
 
 test('login fails closed without an administrator password in non-production environments', async () => {
   const storedData = JSON.stringify({
-    schemaVersion: 4,
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     users: [{
       id: 'admin-1',
       role: 'admin',
@@ -536,7 +709,7 @@ test('production rejects insecure requests and redirects safe page requests to H
 
 test('admin image upload stores a validated image and returns its public URL', async () => {
   const initialState = {
-    schemaVersion: 4,
+    schemaVersion: DATABASE_SCHEMA_VERSION,
     users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
   };
   let storedMedia: unknown[] | null = null;

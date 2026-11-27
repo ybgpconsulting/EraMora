@@ -58,7 +58,7 @@ const DEFAULT_SETTINGS: BusinessSettings = {
   whatsappNumber: '918368143892',
   supportEmail: 'eramora.in@gmail.com',
   supportPhone: '+91 83681 43892',
-  studioAddress: 'Sector 20, Noida, Uttar Pradesh – 201301, India',
+  studioAddress: '',
   instagramHandle: '@eramora.in',
   instagramUrl: 'https://www.instagram.com/eramora.in/',
   whatsappOrderingEnabled: true,

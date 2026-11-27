@@ -8,7 +8,49 @@ import type {
   Product,
 } from '../src/types/store';
 
-export const DATABASE_SCHEMA_VERSION = 4;
+export const DATABASE_SCHEMA_VERSION = 5;
+
+export const SEEDED_SAMPLE_PRODUCT_IDS = Array.from(
+  { length: 25 },
+  (_, index) => `demo-${index + 1}`
+);
+const SEEDED_SAMPLE_PRODUCT_ID_SET = new Set(SEEDED_SAMPLE_PRODUCT_IDS);
+
+export const SAMPLE_CONCEPT_SUBTITLE = 'Sample catalogue concept — details subject to confirmation';
+export const SAMPLE_CONCEPT_DESCRIPTION =
+  'This is a sample catalogue concept only and is not for sale. Formulation, ingredients, fragrance notes, materials, specifications, price and availability are subject to confirmation with the ERAMORA concierge.';
+export const SAMPLE_CONCEPT_SEO_DESCRIPTION =
+  'ERAMORA sample catalogue concept only. Details, price and availability are subject to confirmation. Not for sale.';
+
+export function normalizeSeededSampleProduct(product: Product): Product {
+  if (!SEEDED_SAMPLE_PRODUCT_ID_SET.has(product.id)) return product;
+
+  return {
+    ...product,
+    subtitle: SAMPLE_CONCEPT_SUBTITLE,
+    description: SAMPLE_CONCEPT_DESCRIPTION,
+    specifications: {},
+    fragranceNotes: undefined,
+    ingredientsOrMaterials: '',
+    variants: (Array.isArray(product.variants) ? product.variants : []).map((variant) => ({
+      id: variant.id,
+      label: variant.label,
+      size: variant.size,
+      price: 0,
+      stock: 0,
+      sku: '',
+    })),
+    badges: [],
+    isShowcaseDemo: true,
+    isFeatured: false,
+    isBestseller: false,
+    isNewArrival: false,
+    ratingAverage: 0,
+    reviewCount: 0,
+    seoTitle: `${product.name} | ERAMORA Sample Concept`,
+    seoDescription: SAMPLE_CONCEPT_SEO_DESCRIPTION,
+  };
+}
 
 export interface DatabaseSchema {
   schemaVersion: number;
@@ -60,11 +102,11 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
 
   const now = new Date().toISOString();
   const categories: Category[] = [
-    { id: 'cat-curated-fragrances', name: 'Curated Fragrances', slug: 'curated-fragrances', description: 'A curated edit of artisanal eau de parfum compositions crafted with slow maceration.', image: IMG.perfume, featured: true, sortOrder: 1 },
-    { id: 'cat-scented-candles', name: 'Scented Candles', slug: 'scented-candles', description: 'Hand-poured botanical wax candles formulated for calm, luminous, and meditative evenings.', image: IMG.candle, featured: true, sortOrder: 2 },
-    { id: 'cat-sculptural-candles', name: 'Sculptural Candles', slug: 'sculptural-candles', description: 'Architectural candle forms hand-poured in natural soy and beeswax blends where form meets fragrance.', image: IMG.ritual, featured: true, sortOrder: 3 },
-    { id: 'cat-diy-colouring-kits', name: 'DIY Colouring Kits', slug: 'diy-colouring-kits', description: 'Mindful art and botanical colouring kits designed for slow, unhurried, contemplative play.', image: IMG.hero, featured: true, sortOrder: 4 },
-    { id: 'cat-gifting', name: 'Gifting', slug: 'gifting', description: 'Artisanal gift coffrets presented in warm ivory linen boxes with champagne satin ribbons.', image: IMG.coffret, featured: true, sortOrder: 5 },
+    { id: 'cat-curated-fragrances', name: 'Curated Fragrances', slug: 'curated-fragrances', description: 'Explore fragrance concepts in the ERAMORA sample catalogue. Notes, formulation, price and availability require confirmation.', image: IMG.perfume, featured: true, sortOrder: 1 },
+    { id: 'cat-scented-candles', name: 'Scented Candles', slug: 'scented-candles', description: 'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.', image: IMG.candle, featured: true, sortOrder: 2 },
+    { id: 'cat-sculptural-candles', name: 'Sculptural Candles', slug: 'sculptural-candles', description: 'Explore sculptural candle concepts. Materials, dimensions, specifications and availability require confirmation.', image: IMG.ritual, featured: true, sortOrder: 3 },
+    { id: 'cat-diy-colouring-kits', name: 'DIY Colouring Kits', slug: 'diy-colouring-kits', description: 'Explore creative-kit concepts. Materials, contents, specifications and availability require confirmation.', image: IMG.hero, featured: true, sortOrder: 4 },
+    { id: 'cat-gifting', name: 'Gifting', slug: 'gifting', description: 'Explore gifting concepts. Product combinations, presentation, pricing and delivery details are confirmed by the concierge.', image: IMG.coffret, featured: true, sortOrder: 5 },
   ];
 
   const products: Product[] = [
@@ -907,14 +949,14 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
 
   const banners: BannerConfig = {
     id: 'main-banners',
-    announcementText: 'Complimentary boutique shipping across India · Concierge assistance on WhatsApp',
+    announcementText: 'Product and gifting enquiries on WhatsApp',
     heroEyebrow: 'ERAMORA · Atelier Collection',
     heroHeadline: 'Where Fragrance Meets Emotion.',
-    heroSubheadline: 'Curated fragrances, hand-poured candles and thoughtful gifting.',
+    heroSubheadline: 'Explore fragrance, candle and gifting concepts.',
     heroCtaLabel: 'Explore the Collection',
     heroImage: IMG.hero,
     campaignTitle: 'The Art of Thoughtful Gifting',
-    campaignSubtitle: 'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal handwritten note.',
+    campaignSubtitle: 'Explore gifting concepts and ask our concierge about current options and availability.',
     campaignActive: true,
   };
 
@@ -933,7 +975,7 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
   return {
     schemaVersion: DATABASE_SCHEMA_VERSION,
     categories,
-    products,
+    products: products.map(normalizeSeededSampleProduct),
     users,
     banners,
     settings,

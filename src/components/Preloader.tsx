@@ -132,7 +132,7 @@ export const Preloader: React.FC = () => {
       </div>
 
       <p className="absolute bottom-10 text-[9px] uppercase tracking-[0.38em] text-[#6B584C]/55">
-        Noida · Fine Fragrance House
+        Fragrance · Candle · Gifting Concepts
       </p>
     </div>
   );

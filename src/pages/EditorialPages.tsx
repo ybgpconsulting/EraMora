@@ -21,8 +21,8 @@ export const AboutPage: React.FC = () => {
         <p className="text-xs uppercase tracking-[0.2em] text-[#B89352]">The Brand Philosophy</p>
         <h1 className="font-serif text-4xl md:text-5xl text-[#2C1E16] text-balance">Where Fragrance Meets Emotion.</h1>
         <p className="text-base text-[#6B584C] leading-relaxed">
-          ERAMORA is a modern fragrance, candle, and lifestyle house built around a simple belief: scent is the quietest
-          way a moment stays with us.
+          ERAMORA explores fragrance, candle and gifting concepts around a simple belief: scent is one way a moment
+          stays with us. Catalogue concepts are not offers for sale; product details require confirmation.
         </p>
       </header>
 
@@ -38,16 +38,15 @@ export const AboutPage: React.FC = () => {
         <div className="space-y-3">
           <h2 className="font-serif text-2xl text-[#2C1E16]">Inspiration & Memory</h2>
           <p>
-            Long after words fade, the warmth of amber in an evening room or the crispness of neroli on sun-warmed
-            linen brings back who we were with and how we felt. Every ERAMORA composition is designed as an emotional
-            anchor rather than fleeting novelty.
+            The catalogue explores how fragrance and atmosphere can connect with memory. Individual compositions,
+            notes and product details remain concepts until reviewed and confirmed.
           </p>
         </div>
         <div className="space-y-3">
           <h2 className="font-serif text-2xl text-[#2C1E16]">Material Honesty & Tactile Form</h2>
           <p>
-            From heavy amber glass vessels and brushed brass lids to rigid linen-textured presentation boxes, our objects
-            are meant to belong in tranquil interiors long after the final burn.
+            The catalogue explores vessels, forms and presentation ideas. Materials, dimensions, contents and product
+            specifications are confirmed by ERAMORA before any purchase is offered.
           </p>
         </div>
         <div className="space-y-3">
@@ -60,8 +59,8 @@ export const AboutPage: React.FC = () => {
         <div className="space-y-3">
           <h2 className="font-serif text-2xl text-[#2C1E16]">Approachable Luxury</h2>
           <p>
-            Whether shopping directly online or consulting our concierge via WhatsApp, every interaction is unhurried,
-            transparent, and tailored to your space and occasion.
+            Browse the catalogue and contact the concierge with questions. This website does not accept or confirm
+            orders or payments; availability, delivery, charges and transaction terms require confirmation.
           </p>
         </div>
       </div>
@@ -118,9 +117,6 @@ export const ContactPage: React.FC = () => {
               <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
                 {settings.instagramHandle}
               </a>
-            </p>
-            <p>
-              <span className="text-[#6B584C]">Atelier:</span> {settings.studioAddress}
             </p>
           </div>
 
@@ -225,6 +221,20 @@ export const GrievancePage: React.FC = () => (
       For a grievance related to ERAMORA or a confirmed transaction, contact the grievance officer using the details
       below.
     </p>
+    <div role="status" className="space-y-2 border border-[#8A3D2D]/30 bg-[#F4EFE6] p-4 text-sm text-[#6B584C]">
+      <p className="font-semibold text-[#8A3D2D]">Owner verification pending</p>
+      <p>
+        The details below have not been independently verified. Before relying on or publishing them as confirmed legal
+        contact information, the owner must approve:
+      </p>
+      <ul className="list-disc space-y-1 pl-5">
+        <li>Operator name and legal identity</li>
+        <li>Business address</li>
+        <li>Grievance officer name and designation</li>
+        <li>Grievance email address</li>
+        <li>Grievance phone number and response process</li>
+      </ul>
+    </div>
     <dl className="divide-y divide-[#2C1E16]/10 border-y border-[#2C1E16]/10 text-sm">
       <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
         <dt className="text-[#6B584C]">Operator</dt>

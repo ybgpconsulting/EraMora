@@ -64,7 +64,7 @@ export const CartPage: React.FC = () => {
           </div>
           <p className="font-serif text-2xl text-[#2C1E16]">Your shopping bag is empty</p>
           <p className="text-sm text-[#6B584C] max-w-md mx-auto leading-relaxed">
-            Discover signature Eau de Parfum, hand-poured botanical candles, and heirloom gift coffrets.
+            Browse fragrance, candle and gifting concepts, then ask the concierge to confirm current details.
           </p>
           <button
             type="button"
@@ -158,10 +158,10 @@ export const CartPage: React.FC = () => {
                 <div>
                   <span className="inline-flex items-center gap-1.5 font-semibold text-sm">
                     <Gift className="w-4 h-4 text-[#B89352]" />
-                    Complimentary Boutique Gift Presentation
+                    Request gift presentation
                   </span>
                   <p className="text-xs text-[#6B584C] mt-0.5 leading-relaxed">
-                    Wrapped in our signature warm ivory linen box, sealed with champagne satin ribbon and a personalized handwritten card.
+                    This is a request only. Available options, any charges and message-card details will be confirmed by the concierge.
                   </p>
                 </div>
               </label>
@@ -173,7 +173,7 @@ export const CartPage: React.FC = () => {
                   onChange={(e) => setGiftMessage(e.target.value)}
                   maxLength={250}
                   aria-label="Gift card message"
-                  placeholder="Enter your handwritten gift message for the recipient..."
+                  placeholder="Add a gift-message request for the concierge..."
                   className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
                 />
               )}
@@ -183,7 +183,7 @@ export const CartPage: React.FC = () => {
           {/* Summary Column */}
           <aside className="lg:col-span-4">
             <div className="p-6 bg-[#F4EFE6]/70 border border-[#2C1E16]/12 space-y-5 sticky top-24 shadow-sm">
-              <h2 className="font-serif text-2xl text-[#2C1E16]">Order Summary</h2>
+              <h2 className="font-serif text-2xl text-[#2C1E16]">Enquiry Summary</h2>
 
               <div className="space-y-2.5 text-xs text-[#6B584C] border-b border-[#2C1E16]/10 pb-4">
                 <div className="flex justify-between items-baseline text-sm">
@@ -193,23 +193,23 @@ export const CartPage: React.FC = () => {
                 <div className="flex justify-between items-center text-xs">
                   <span className="flex items-center gap-1.5">
                     <Truck className="w-3.5 h-3.5 text-[#B89352]" />
-                    Boutique Shipping
+                    Delivery
                   </span>
-                  <span className="text-[#2E5A36] font-semibold">Complimentary</span>
+                  <span className="font-semibold text-[#2C1E16]">To be confirmed</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="flex items-center gap-1.5">
                     <Gift className="w-3.5 h-3.5 text-[#B89352]" />
-                    Atelier Gift Packaging
+                    Gift presentation
                   </span>
-                  <span className="text-[#2E5A36] font-semibold">Included</span>
+                  <span className="font-semibold text-[#2C1E16]">Request only</span>
                 </div>
               </div>
 
               <div className="text-xs leading-relaxed text-[#6B584C] space-y-2">
                 <p className="flex items-start gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#B89352] shrink-0 mt-0.5" />
-                  <span>Orders are confirmed directly by our Noida concierge team via WhatsApp for personalized care and tracking.</span>
+                  <span>A WhatsApp message is an enquiry only. Product availability, delivery, charges and any purchase terms must be confirmed by ERAMORA.</span>
                 </p>
               </div>
 
@@ -222,7 +222,7 @@ export const CartPage: React.FC = () => {
                     className="w-full inline-flex min-h-12 items-center justify-center gap-2 bg-[#2C1E16] text-[#FAF7F2] px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.16em] transition-all hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] shadow-md hover:shadow-lg"
                   >
                     <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                    <span>Order via WhatsApp Concierge</span>
+                    <span>Enquire via WhatsApp</span>
                   </a>
                 )}
 

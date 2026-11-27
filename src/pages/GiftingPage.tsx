@@ -146,7 +146,7 @@ export const GiftingPage: React.FC = () => {
               </h2>
             </div>
             <p className="max-w-md text-xs text-[#6B584C] md:text-right">
-              Each coffret arrives in our signature warm ivory linen box, sealed with champagne satin ribbon and handwritten card.
+              Explore gifting concepts. Product combinations, presentation, availability, delivery and any charges are confirmed by the concierge.
             </p>
           </Reveal>
 

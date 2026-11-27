@@ -20,7 +20,16 @@ import {
   withSecurityHeaders,
   type RequestContext,
 } from './http';
-import { DEFAULT_ADMIN_HASH, hashPassword, verifyPassword } from './seed';
+import {
+  DEFAULT_ADMIN_HASH,
+  hashPassword,
+  normalizeSeededSampleProduct,
+  SAMPLE_CONCEPT_DESCRIPTION,
+  SAMPLE_CONCEPT_SEO_DESCRIPTION,
+  SAMPLE_CONCEPT_SUBTITLE,
+  verifyPassword,
+} from './seed';
+import { isScannerProbePath } from './scanner-guard';
 import { ERAMORA_FAQS } from '../src/content/faqs';
 import {
   absolutePublicUrl,
@@ -51,14 +60,16 @@ function parseProductVariants(value: unknown, allowUnpriced = false): ProductVar
     const candidate = entry as Record<string, unknown>;
     const label = sanitizeString(candidate.label, 120);
     const size = sanitizeString(candidate.size, 80);
-    const price = Number(candidate.price);
-    const stock = Number(candidate.stock);
+    const price = typeof candidate.price === 'number' ? candidate.price : Number.NaN;
+    const stock = typeof candidate.stock === 'number' ? candidate.stock : Number.NaN;
     const id = sanitizeString(candidate.id, 80) || `var-${randomHex(3)}`;
-    const sku = sanitizeString(candidate.sku, 80) || `ERA-${randomHex(2).toUpperCase()}`;
+    const sku = sanitizeString(candidate.sku, 80);
     const compareAtPrice =
       candidate.compareAtPrice === undefined || candidate.compareAtPrice === null || candidate.compareAtPrice === ''
         ? undefined
-        : Number(candidate.compareAtPrice);
+        : typeof candidate.compareAtPrice === 'number'
+          ? candidate.compareAtPrice
+          : Number.NaN;
 
     if (
       !label ||
@@ -70,16 +81,17 @@ function parseProductVariants(value: unknown, allowUnpriced = false): ProductVar
       !Number.isSafeInteger(stock) ||
       stock < 0 ||
       stock > 1_000_000 ||
+      (!allowUnpriced && !sku) ||
       (compareAtPrice !== undefined &&
         (!Number.isFinite(compareAtPrice) || compareAtPrice <= price || compareAtPrice > 10_000_000)) ||
       ids.has(id) ||
-      skus.has(sku)
+      (Boolean(sku) && skus.has(sku))
     ) {
       return null;
     }
 
     ids.add(id);
-    skus.add(sku);
+    if (sku) skus.add(sku);
     variants.push({ id, label, size, price, compareAtPrice, stock, sku });
   }
 
@@ -101,6 +113,104 @@ function parseProductImages(value: unknown): string[] | null {
     images.push(image);
   }
   return images;
+}
+
+function containsOnlyGenericCampaignImages(images: string[]): boolean {
+  return images.every((image) => {
+    try {
+      return new URL(image, 'https://eramora.in').pathname.toLowerCase().startsWith('/brand/eramora/campaigns/');
+    } catch {
+      return true;
+    }
+  });
+}
+
+async function hasStoredProductImage(env: Env, images: string[]): Promise<boolean> {
+  for (const image of images) {
+    const match = /^\/uploads\/([A-Za-z0-9._-]+)$/.exec(image);
+    if (!match) continue;
+
+    if (env.FILES && await env.FILES.head(match[1])) return true;
+
+    const media = await env.DB.prepare('SELECT key FROM media WHERE key = ?')
+      .bind(match[1])
+      .first<{ key: string }>();
+    if (media) return true;
+  }
+  return false;
+}
+
+interface CommercialProductInput {
+  name: string;
+  subtitle: string;
+  description: string;
+  category: Category;
+  images: string[];
+  variants: ProductVariant[];
+}
+
+async function validateCommercialProductInput(
+  body: Partial<Product>,
+  categories: Category[],
+  env: Env
+): Promise<{ input: CommercialProductInput; error?: never } | { input?: never; error: string }> {
+  const name = sanitizeString(body.name, 140);
+  if (!name) return { error: 'Enter a valid product name before publishing.' };
+
+  const categoryId = sanitizeString(body.categoryId, 120);
+  const category = categories.find((entry) => entry.id === categoryId);
+  if (!category) return { error: 'Choose a valid product category before publishing.' };
+
+  const subtitle = sanitizeString(body.subtitle, 160);
+  const description = sanitizeString(body.description, 2000);
+  if (!subtitle || subtitle === SAMPLE_CONCEPT_SUBTITLE || description.length < 40 ||
+    description === SAMPLE_CONCEPT_DESCRIPTION) {
+    return { error: 'Add complete, approved product details before publishing.' };
+  }
+
+  const images = parseProductImages(body.images);
+  if (
+    !images ||
+    containsOnlyGenericCampaignImages(images) ||
+    !(await hasStoredProductImage(env, images))
+  ) {
+    return { error: 'Upload at least one valid product-specific image before publishing.' };
+  }
+
+  const variants = parseProductVariants(body.variants, false);
+  if (!variants) {
+    return { error: 'Add at least one variant with a positive price, valid stock, label, size, and SKU.' };
+  }
+
+  return { input: { name, subtitle, description, category, images, variants } };
+}
+
+function normalizeDemoProduct(product: Product): Product {
+  return normalizeSeededSampleProduct({
+    ...product,
+    subtitle: SAMPLE_CONCEPT_SUBTITLE,
+    description: SAMPLE_CONCEPT_DESCRIPTION,
+    specifications: {},
+    fragranceNotes: undefined,
+    ingredientsOrMaterials: '',
+    variants: (Array.isArray(product.variants) ? product.variants : []).map((variant) => ({
+      id: variant.id,
+      label: variant.label,
+      size: variant.size,
+      price: 0,
+      stock: 0,
+      sku: '',
+    })),
+    badges: [],
+    isShowcaseDemo: true,
+    isFeatured: false,
+    isBestseller: false,
+    isNewArrival: false,
+    ratingAverage: 0,
+    reviewCount: 0,
+    seoTitle: `${product.name} | ERAMORA Sample Concept`,
+    seoDescription: SAMPLE_CONCEPT_SEO_DESCRIPTION,
+  });
 }
 
 function matchesImageSignature(bytes: Uint8Array, extension: string): boolean {
@@ -132,7 +242,7 @@ function setSessionCookie(res: HttpResponse, token: string, secure: boolean): vo
 router.get('/api/config/public', (_req, res) => {
   const db = getDb();
   res.json({
-    settings: db.settings,
+    settings: { ...db.settings, studioAddress: '' },
     banners: db.banners,
   });
 });
@@ -293,32 +403,38 @@ router.get('/api/admin/products', requireAdmin, (_req, res) => {
 
 router.post('/api/admin/products', requireAdmin, async (req, res) => {
   const body = req.body as Partial<Product>;
-  const name = sanitizeString(body.name, 140);
-  if (!name) return res.status(400).json({ error: 'Product name is required.' });
   const db = getDb();
-  const cat = db.categories.find((c) => c.id === body.categoryId) || db.categories[0];
-  if (!cat) return res.status(400).json({ error: 'Create a category before adding products.' });
   const isShowcaseDemo = body.isShowcaseDemo !== false;
-  const variants =
+  const publication = isShowcaseDemo
+    ? undefined
+    : await validateCommercialProductInput(body, db.categories, req.env);
+  if (publication && !publication.input) {
+    return res.status(400).json({ error: publication.error });
+  }
+  const commercialInput = publication && 'input' in publication ? publication.input : undefined;
+  const name = commercialInput?.name || sanitizeString(body.name, 140);
+  if (!name) return res.status(400).json({ error: 'Product name is required.' });
+  const requestedCategory = body.categoryId
+    ? db.categories.find((category) => category.id === body.categoryId)
+    : undefined;
+  if (body.categoryId && !requestedCategory) {
+    return res.status(400).json({ error: 'Choose a valid product category.' });
+  }
+  const cat = commercialInput?.category || requestedCategory || db.categories[0];
+  if (!cat) return res.status(400).json({ error: 'Create a category before adding products.' });
+  const variants = commercialInput?.variants || (
     body.variants === undefined
       ? isShowcaseDemo
-        ? [
-          {
-            id: `var-${randomHex(3)}`,
-            label: 'Sample variant',
-            size: 'TBC',
-            price: 0,
-            stock: 0,
-            sku: `ERA-${randomHex(2).toUpperCase()}`,
-          },
-        ]
+        ? [{ id: `var-${randomHex(3)}`, label: 'Sample variant', size: 'TBC', price: 0, stock: 0, sku: '' }]
         : null
-      : parseProductVariants(body.variants, isShowcaseDemo);
+      : parseProductVariants(body.variants, isShowcaseDemo)
+  );
   if (!variants) return res.status(400).json({ error: 'Enter valid variant labels, prices, stock, and SKUs.' });
-  const images =
+  const images = commercialInput?.images || (
     body.images === undefined
       ? ['/brand/eramora/campaigns/fragrance-art.jpg']
-      : parseProductImages(body.images);
+      : parseProductImages(body.images)
+  );
   if (!images) return res.status(400).json({ error: 'Add between 1 and 12 valid product image URLs.' });
   const slugBase = name
     .toLowerCase()
@@ -331,24 +447,28 @@ router.post('/api/admin/products', requireAdmin, async (req, res) => {
     id: `prod-${randomHex(4)}`,
     slug,
     name,
-    subtitle: sanitizeString(body.subtitle || '', 160),
+    subtitle: commercialInput?.subtitle || SAMPLE_CONCEPT_SUBTITLE,
     categoryId: cat.id,
     categoryName: cat.name,
-    description: sanitizeString(body.description || '', 2000),
-    specifications: body.specifications || {},
-    fragranceNotes: body.fragranceNotes,
-    ingredientsOrMaterials: sanitizeString(body.ingredientsOrMaterials || '', 600),
+    description: commercialInput?.description || SAMPLE_CONCEPT_DESCRIPTION,
+    specifications: isShowcaseDemo ? {} : body.specifications || {},
+    fragranceNotes: isShowcaseDemo ? undefined : body.fragranceNotes,
+    ingredientsOrMaterials: isShowcaseDemo ? '' : sanitizeString(body.ingredientsOrMaterials || '', 600),
     images,
     variants,
-    badges: Array.isArray(body.badges) ? body.badges : [],
+    badges: isShowcaseDemo ? [] : Array.isArray(body.badges) ? body.badges : [],
     isShowcaseDemo,
-    isFeatured: Boolean(body.isFeatured),
-    isBestseller: Boolean(body.isBestseller),
-    isNewArrival: Boolean(body.isNewArrival),
+    isFeatured: !isShowcaseDemo && Boolean(body.isFeatured),
+    isBestseller: !isShowcaseDemo && Boolean(body.isBestseller),
+    isNewArrival: !isShowcaseDemo && Boolean(body.isNewArrival),
     isArchived: false,
-    seoTitle: sanitizeString(body.seoTitle || `${name} | ERAMORA`, 120),
-    seoDescription: sanitizeString(body.seoDescription || body.subtitle || '', 220),
-    ratingAverage: 5.0,
+    seoTitle: isShowcaseDemo
+      ? `${name} | ERAMORA Sample Concept`
+      : sanitizeString(body.seoTitle || `${name} | ERAMORA`, 120),
+    seoDescription: isShowcaseDemo
+      ? SAMPLE_CONCEPT_SEO_DESCRIPTION
+      : sanitizeString(body.seoDescription || body.subtitle || '', 220),
+    ratingAverage: 0,
     reviewCount: 0,
     createdAt: now,
     updatedAt: now,
@@ -366,11 +486,18 @@ router.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const db = getDb();
   const existing = db.products.find((p) => p.id === id);
   if (!existing) return res.status(404).json({ error: 'Product not found.' });
+  const isPublishing = existing.isShowcaseDemo && body.isShowcaseDemo === false;
+  const publication = isPublishing
+    ? await validateCommercialProductInput(body, db.categories, req.env)
+    : undefined;
+  if (publication && !publication.input) {
+    return res.status(400).json({ error: publication.error });
+  }
   if (body.name !== undefined && !sanitizeString(body.name, 140)) {
     return res.status(400).json({ error: 'Product name cannot be empty.' });
   }
   const allowUnpricedVariants =
-    body.isShowcaseDemo === true || (body.isShowcaseDemo === undefined && existing.isShowcaseDemo);
+    !isPublishing && (body.isShowcaseDemo === true || (body.isShowcaseDemo === undefined && existing.isShowcaseDemo));
   const variants =
     body.variants === undefined ? undefined : parseProductVariants(body.variants, allowUnpricedVariants);
   if (body.variants !== undefined && !variants) {
@@ -384,9 +511,19 @@ router.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
   await saveDb((draft) => {
     const target = draft.products.find((p) => p.id === id);
     if (!target) return;
-    if (body.name) target.name = sanitizeString(body.name, 140);
-    if (body.subtitle !== undefined) target.subtitle = sanitizeString(body.subtitle, 160);
-    if (body.description !== undefined) target.description = sanitizeString(body.description, 2000);
+    if (publication?.input) {
+      target.name = publication.input.name;
+      target.subtitle = publication.input.subtitle;
+      target.description = publication.input.description;
+      target.categoryId = publication.input.category.id;
+      target.categoryName = publication.input.category.name;
+      target.images = publication.input.images;
+      target.variants = publication.input.variants;
+    } else {
+      if (body.name) target.name = sanitizeString(body.name, 140);
+      if (body.subtitle !== undefined) target.subtitle = sanitizeString(body.subtitle, 160);
+      if (body.description !== undefined) target.description = sanitizeString(body.description, 2000);
+    }
     if (body.categoryId) {
       const cat = draft.categories.find((c) => c.id === body.categoryId);
       if (cat) {
@@ -408,6 +545,7 @@ router.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
     if (body.isArchived !== undefined) target.isArchived = Boolean(body.isArchived);
     if (body.seoTitle !== undefined) target.seoTitle = sanitizeString(body.seoTitle, 120);
     if (body.seoDescription !== undefined) target.seoDescription = sanitizeString(body.seoDescription, 220);
+    if (target.isShowcaseDemo) Object.assign(target, normalizeDemoProduct(target));
     target.updatedAt = new Date().toISOString();
   });
 
@@ -541,6 +679,10 @@ router.put('/api/admin/settings', requireAdmin, async (req, res) => {
       settings.whatsappOrderingEnabled = Boolean(req.body.whatsappOrderingEnabled);
     }
   });
+  res.json(getDb().settings);
+});
+
+router.get('/api/admin/settings', requireAdmin, (_req, res) => {
   res.json(getDb().settings);
 });
 
@@ -907,6 +1049,15 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  if (isScannerProbePath(url.pathname)) {
+    return withSecurityHeaders(
+      new Response('Not Found', {
+        status: 404,
+        headers: { 'cache-control': 'no-store' },
+      }),
+      url.protocol === 'https:'
+    );
+  }
   if (env.ENVIRONMENT === 'production' && url.protocol !== 'https:') {
     if (request.method === 'GET' || request.method === 'HEAD') {
       url.protocol = 'https:';

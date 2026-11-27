@@ -1,5 +1,5 @@
 import React from 'react';
-import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
+import { Instagram, Mail, Phone } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { buildGeneralWhatsAppUrl } from '../utils/commerce';
 import { BrandLogo } from './BrandLogo';
@@ -151,26 +151,13 @@ export const Footer: React.FC = () => {
               </span>
             </a>
 
-            <div className="flex min-h-14 items-start gap-3 px-2.5 pt-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
-                <MapPin aria-hidden="true" className="h-4 w-4" strokeWidth={1.5} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[9px] uppercase tracking-[0.16em] text-[#FAF7F2]/40">
-                  Studio
-                </span>
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-[#FAF7F2]/72">
-                  {settings.studioAddress}
-                </span>
-              </span>
-            </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 pt-4 xl:flex-row xl:items-stretch">
           <div className="flex min-h-[68px] flex-1 flex-col justify-center rounded-2xl border border-[#FAF7F2]/10 bg-[#FAF7F2]/[0.035] px-4 py-3 text-[9px] uppercase tracking-[0.16em] text-[#FAF7F2]/55 md:px-5">
             <p>© {new Date().getFullYear()} ERAMORA · All rights reserved</p>
-            <p className="mt-1">Personal fragrance and gifting concierge · Noida, India</p>
+            <p className="mt-1">Fragrance, candle and gifting concepts</p>
           </div>
           <div className="w-full max-w-[26rem] xl:shrink-0">
             <YbgpFooterAttribution />

@@ -279,7 +279,6 @@ export const Navbar: React.FC = () => {
                 <a href={phoneUrl} className="block hover:text-[#2C1E16]">
                   {settings.supportPhone}
                 </a>
-                <p className="text-[#B89352]">{settings.studioAddress}</p>
               </div>
 
               <a

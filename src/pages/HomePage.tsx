@@ -207,7 +207,7 @@ export const HomePage: React.FC = () => {
         index="I"
         eyebrow="The Philosophy"
         title="Where Fragrance Meets Emotion."
-        body="Curated fragrances, candles and gifting to make every moment memorable."
+        body="Explore fragrance, candle and gifting concepts created to evoke a feeling."
         cta="Read our story"
         href="/about"
         image={IMG.ritual}
@@ -225,7 +225,7 @@ export const HomePage: React.FC = () => {
         index="III"
         eyebrow="Objects for the Home"
         title="A Scent for Every Room."
-        body="Hand-poured wax, fine fragrance and quietly tactile objects made to be lived with, long after the last burn."
+        body="Explore concepts for fragrance and objects for the home. Product materials and specifications require confirmation."
         cta="View the collections"
         href="/collections"
         image={IMG.candle}

@@ -16,7 +16,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const primaryVariant = product.variants[0];
   const isSaved = wishlist.includes(product.id);
   const inStock = !product.isShowcaseDemo && product.variants.some((v) => v.stock > 0);
-  const badgeText = product.badges[0] || (product.isShowcaseDemo ? 'Showcase' : '');
+  const badgeText = product.isShowcaseDemo ? 'Sample concept' : product.badges[0] || '';
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,7 +56,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         >
           <ImageWithFallback
             src={getProductImage(product)}
-            alt={product.name}
+            alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.name}
             fallbackTitle={product.name}
             className="h-full w-full object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.05]"
           />

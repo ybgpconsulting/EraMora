@@ -73,10 +73,10 @@ export const CartDrawer: React.FC = () => {
           </button>
         </div>
 
-        {/* Complimentary Delivery Banner */}
+        {/* Enquiry transparency */}
         <div className="px-5 py-2.5 bg-[#F4EFE6] border-b border-[#2C1E16]/8 flex items-center gap-2 text-xs text-[#2C1E16]">
           <Truck className="w-3.5 h-3.5 text-[#B89352] shrink-0" strokeWidth={1.5} />
-          <span>Complimentary boutique delivery across India on all orders.</span>
+          <span>Delivery availability and charges are confirmed for each enquiry.</span>
         </div>
 
         {/* Body */}
@@ -88,7 +88,7 @@ export const CartDrawer: React.FC = () => {
               </div>
               <p className="font-serif text-2xl text-[#2C1E16]">Your bag is currently empty</p>
               <p className="text-sm text-[#6B584C] max-w-xs mx-auto leading-relaxed">
-                Explore hand-poured botanical candles, artisanal Eau de Parfum, and curated gift coffrets.
+                Browse catalogue concepts and ask the concierge to confirm current details.
               </p>
               <button
                 type="button"
@@ -176,10 +176,10 @@ export const CartDrawer: React.FC = () => {
                   <span className="text-xs text-[#2C1E16] leading-relaxed">
                     <span className="inline-flex items-center gap-1 font-semibold text-[#2C1E16]">
                       <Gift className="w-3.5 h-3.5 text-[#B89352]" />
-                      Bespoke Gift Presentation
+                      Request gift presentation
                     </span>
                     <span className="block text-[#6B584C] mt-0.5">
-                      Complimentary warm ivory linen box, champagne silk ribbon, and handwritten card.
+                      Options, availability and any charges are confirmed by the concierge. This request is not an order.
                     </span>
                   </span>
                 </label>
@@ -190,7 +190,7 @@ export const CartDrawer: React.FC = () => {
                     value={giftMessage}
                     onChange={(e) => setGiftMessage(e.target.value)}
                     maxLength={200}
-                    placeholder="Enter your handwritten gift message..."
+                    placeholder="Add a gift-message request for the concierge..."
                     aria-label="Gift card message"
                     className="w-full bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
                   />
@@ -209,12 +209,12 @@ export const CartDrawer: React.FC = () => {
                 <span className="font-semibold text-lg text-[#2C1E16] tabular-nums">{formatINR(subtotal)}</span>
               </div>
               <div className="flex justify-between text-[11px]">
-                <span>Shipping</span>
-                <span className="text-[#2E5A36] font-medium">Complimentary across India</span>
+                <span>Delivery</span>
+                <span className="font-medium text-[#2C1E16]">To be confirmed</span>
               </div>
               <div className="flex justify-between text-[11px]">
-                <span>Packaging</span>
-                <span className="text-[#2E5A36] font-medium">Signature Atelier Box Included</span>
+                <span>Gift presentation</span>
+                <span className="font-medium text-[#2C1E16]">Request only</span>
               </div>
             </div>
 
@@ -227,7 +227,7 @@ export const CartDrawer: React.FC = () => {
                   className="w-full inline-flex items-center justify-center gap-2 bg-[#2C1E16] text-[#FAF7F2] py-3.5 text-xs font-semibold uppercase tracking-[0.16em] hover:bg-[#3F2C21] transition-all cursor-pointer shadow-md"
                 >
                   <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-                  <span>Order via WhatsApp Concierge</span>
+                  <span>Enquire via WhatsApp</span>
                 </a>
               )}
 
@@ -239,7 +239,7 @@ export const CartDrawer: React.FC = () => {
                 }}
                 className="w-full inline-flex items-center justify-center gap-1.5 border border-[#2C1E16]/20 bg-[#FAF7F2] text-[#2C1E16] py-2.5 text-xs font-medium uppercase tracking-[0.14em] hover:bg-[#F4EFE6] transition-colors cursor-pointer"
               >
-                <span>Review Order Details</span>
+                <span>Review Enquiry Details</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </div>

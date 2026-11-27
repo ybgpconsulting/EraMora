@@ -200,7 +200,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           <div className="relative aspect-[4/3] bg-[#F4EFE6] border border-[#2C1E16]/10 overflow-hidden shadow-xs">
             <ImageWithFallback
               src={getProductImage(product, activeImgIdx)}
-              alt={`${product.name} — view ${activeImgIdx + 1}`}
+              alt={product.isShowcaseDemo
+                ? `${product.name} sample concept image ${activeImgIdx + 1}`
+                : `${product.name} — view ${activeImgIdx + 1}`}
               loading="eager"
               className="w-full h-full object-cover transition-transform duration-700 ease-out hover:scale-105"
             />
@@ -209,10 +211,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                 {product.badges[0]}
               </span>
             )}
+            {product.isShowcaseDemo && (
+              <span className="absolute left-4 bottom-4 border border-[#C5A059]/40 bg-[#FAF7F2]/95 px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] text-[#2C1E16] backdrop-blur-md shadow-xs">
+                Sample concept image
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setZoomOpen(true)}
-              aria-label="Zoom product photograph"
+              aria-label={product.isShowcaseDemo ? 'Zoom sample concept image' : 'Zoom product photograph'}
               className="absolute bottom-3 right-3 min-w-11 min-h-11 px-3 bg-[#FAF7F2]/90 border border-[#2C1E16]/15 inline-flex items-center gap-1.5 text-xs text-[#2C1E16] backdrop-blur-md hover:bg-[#FAF7F2] cursor-pointer shadow-xs"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -227,7 +234,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
                   key={i}
                   type="button"
                   onClick={() => setActiveImgIdx(i)}
-                  aria-label={`View photograph ${i + 1}`}
+                  aria-label={product.isShowcaseDemo
+                    ? `View sample concept image ${i + 1}`
+                    : `View photograph ${i + 1}`}
                   className={`w-20 aspect-[4/3] shrink-0 border overflow-hidden cursor-pointer transition-all ${
                     activeImgIdx === i ? 'border-[#B89352] ring-1 ring-[#B89352]' : 'border-[#2C1E16]/15 opacity-70 hover:opacity-100'
                   }`}
@@ -242,18 +251,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
           <div className="mt-6 grid grid-cols-3 gap-3 border-t border-[#2C1E16]/10 pt-5 text-center">
             <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/8">
               <Truck className="w-4 h-4 mx-auto text-[#B89352] mb-1.5" strokeWidth={1.5} />
-              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Complimentary Shipping</p>
-              <p className="text-[10px] text-[#6B584C] mt-0.5">Across India</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Delivery</p>
+              <p className="text-[10px] text-[#6B584C] mt-0.5">Confirm by enquiry</p>
             </div>
             <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/8">
               <Gift className="w-4 h-4 mx-auto text-[#B89352] mb-1.5" strokeWidth={1.5} />
-              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Atelier Packaging</p>
-              <p className="text-[10px] text-[#6B584C] mt-0.5">Ivory Linen Box</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Gift presentation</p>
+              <p className="text-[10px] text-[#6B584C] mt-0.5">Request options</p>
             </div>
             <div className="p-3 bg-[#F4EFE6]/50 border border-[#2C1E16]/8">
               <ShieldCheck className="w-4 h-4 mx-auto text-[#B89352] mb-1.5" strokeWidth={1.5} />
-              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Artisanal Purity</p>
-              <p className="text-[10px] text-[#6B584C] mt-0.5">Clean Ingredients</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] font-medium text-[#2C1E16]">Availability</p>
+              <p className="text-[10px] text-[#6B584C] mt-0.5">Confirm before purchase</p>
             </div>
           </div>
         </div>
@@ -413,7 +422,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               type="text"
               value={waEnquiryNote}
               onChange={(e) => setWaEnquiryNote(e.target.value)}
-              placeholder="Add personal note (e.g., custom gift message, delivery date request)..."
+              placeholder="Add a product question or gift-presentation request..."
               aria-label="WhatsApp enquiry note"
               className="w-full min-h-11 bg-[#FAF7F2] border border-[#2C1E16]/15 px-3 py-2 text-xs text-[#2C1E16] placeholder-[#6B584C]/70 focus:outline-none focus:border-[#B89352]"
             />
@@ -424,10 +433,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               className="w-full h-11 inline-flex items-center justify-center gap-2 bg-[#FAF7F2] border border-[#2C1E16]/30 text-[#2C1E16] text-xs font-semibold uppercase tracking-[0.16em] hover:border-[#25D366] hover:bg-[#F4EFE6] transition-all"
             >
               <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-              <span>{product.isShowcaseDemo ? 'Ask About This Concept' : 'Order or Inquire on WhatsApp'}</span>
+              <span>{product.isShowcaseDemo ? 'Ask About This Concept' : 'Enquire on WhatsApp'}</span>
             </a>
             <p className="text-[11px] leading-relaxed text-[#6B584C]">
-              WhatsApp connects directly to our Noida atelier team for custom gift ribboning, personalized advice, and expedited delivery coordination.
+              Sending a WhatsApp message is an enquiry only. Product details, availability, delivery, charges and transaction terms require confirmation by ERAMORA.
             </p>
           </div>
 
@@ -559,24 +568,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
               </button>
               {openAccordion === 'ritual' && (
                 <div className="mt-3 text-xs text-[#6B584C] leading-relaxed space-y-2 p-3.5 bg-[#FAF7F2] border border-[#2C1E16]/10">
-                  {product.categoryId === 'cat-scented-candles' || product.categoryId === 'cat-sculptural-candles' ? (
-                    <>
-                      <p>• On first burn, allow the melted wax pool to reach the edges of the vessel (~2 to 3 hours) to prevent candle tunneling.</p>
-                      <p>• Trim the cotton wick to 5mm prior to each lighting to maintain a pure, soot-free flame.</p>
-                      <p>• Burn on a heat-resistant surface away from direct drafts, children, and flammable objects.</p>
-                    </>
-                  ) : product.categoryId === 'cat-curated-fragrances' ? (
-                    <>
-                      <p>• Spray onto warm pulse points: the inside of wrists, hollow of the clavicle, and behind the ears.</p>
-                      <p>• Allow the macerated essence to dry naturally without friction; rubbing can bruise delicate volatile top notes.</p>
-                      <p>• Store away from direct sunlight and temperature fluctuations to preserve pure botanical extracts.</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>• Keep in a cool, dry place. Handcrafted with non-toxic, archival-grade artisanal components.</p>
-                      <p>• Each set arrives carefully checked by our atelier team prior to dispatch.</p>
-                    </>
-                  )}
+                  <p>
+                    Care and usage guidance depends on the confirmed product specifications. Ask the concierge for
+                    product-specific instructions before use.
+                  </p>
                 </div>
               )}
             </div>
@@ -690,7 +685,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Product Photograph Zoom"
+          aria-label={product.isShowcaseDemo ? 'Sample concept image zoom' : 'Product photograph zoom'}
           ref={zoomDialogRef}
           tabIndex={-1}
           className="fixed inset-0 z-50 bg-[#2C1E16]/85 backdrop-blur-sm flex items-center justify-center p-4"
@@ -705,8 +700,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
             <X className="w-5 h-5" />
           </button>
           <img
-            src={product.images[activeImgIdx] || product.images[0]}
-            alt={product.name}
+            src={getProductImage(product, activeImgIdx)}
+            alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.name}
             className="max-h-[85vh] max-w-[92vw] object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />

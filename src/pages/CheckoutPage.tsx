@@ -41,9 +41,9 @@ export const CheckoutPage: React.FC = () => {
         <section className="space-y-6">
           <div>
             <p className="luxe-eyebrow text-[#B89352]">Personal Concierge</p>
-            <h1 className="mt-2 font-serif text-3xl md:text-4xl text-[#2C1E16]">Atelier Order & Consultation</h1>
+            <h1 className="mt-2 font-serif text-3xl md:text-4xl text-[#2C1E16]">Product & Delivery Enquiry</h1>
             <p className="mt-3 text-sm leading-relaxed text-[#6B584C]">
-              Privacy-first ordering: no forced logins or stored payment data. Your selected creations open in a direct WhatsApp consultation with our atelier concierge team in Noida.
+              Your selected items open as a WhatsApp enquiry. No order or payment is placed on this website.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ export const CheckoutPage: React.FC = () => {
                 <div className="p-4 bg-[#F4EFE6]/70 border border-[#2C1E16]/10 text-xs text-[#2C1E16] space-y-1">
                   <span className="font-semibold flex items-center gap-1.5">
                     <Gift className="w-4 h-4 text-[#B89352]" />
-                    Complimentary Boutique Gift Packaging Included
+                    Gift presentation requested
                   </span>
                   {giftMessage && (
                     <p className="text-[#6B584C] italic pl-5.5">“{giftMessage}”</p>
@@ -99,10 +99,10 @@ export const CheckoutPage: React.FC = () => {
                     className="inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#2C1E16] px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#FAF7F2] transition-all hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] shadow-md hover:shadow-lg"
                   >
                     <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                    <span>Send Order to WhatsApp Concierge</span>
+                    <span>Send Enquiry to WhatsApp</span>
                   </a>
                   <p className="text-center text-[11px] leading-relaxed text-[#6B584C]">
-                    Your bag items are pre-formatted into the message. Our concierge will confirm availability and delivery dispatch directly with you.
+                    Your message is an enquiry only. ERAMORA must confirm availability, delivery, charges and transaction terms before any purchase.
                   </p>
                 </div>
               ) : (
@@ -115,7 +115,7 @@ export const CheckoutPage: React.FC = () => {
         </section>
 
         <aside className="space-y-5 border border-[#2C1E16]/12 bg-[#F4EFE6]/70 p-6 shadow-sm">
-          <h2 className="font-serif text-2xl text-[#2C1E16]">Order Overview</h2>
+          <h2 className="font-serif text-2xl text-[#2C1E16]">Enquiry Summary</h2>
 
           <div className="space-y-2 text-xs border-b border-[#2C1E16]/10 pb-4">
             <div className="flex justify-between items-baseline text-sm">
@@ -127,24 +127,24 @@ export const CheckoutPage: React.FC = () => {
                 <Truck className="w-3.5 h-3.5 text-[#B89352]" />
                 Boutique Shipping
               </span>
-              <span className="text-[#2E5A36] font-semibold">Complimentary</span>
+              <span className="font-semibold text-[#2C1E16]">To be confirmed</span>
             </div>
             <div className="flex justify-between items-center text-xs text-[#6B584C]">
               <span className="flex items-center gap-1.5">
                 <Gift className="w-3.5 h-3.5 text-[#B89352]" />
                 Atelier Gift Box
               </span>
-              <span className="text-[#2E5A36] font-semibold">Complimentary</span>
+              <span className="font-semibold text-[#2C1E16]">Request only</span>
             </div>
           </div>
 
           <div className="space-y-3 text-xs leading-relaxed text-[#6B584C]">
             <div className="flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-[#B89352] shrink-0 mt-0.5" />
-              <p>Hand-poured and bottled with precision in small batches at our studio in Noida, Uttar Pradesh.</p>
+              <p>Product details, availability and delivery arrangements are confirmed directly for each enquiry.</p>
             </div>
             <p>
-              Payment details (UPI, Card, Bank Transfer) and dispatch tracking are coordinated directly by your dedicated concierge.
+              Payment methods and transaction terms will be provided by ERAMORA before a purchase is confirmed.
             </p>
           </div>
         </aside>

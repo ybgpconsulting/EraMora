@@ -1,6 +1,12 @@
 import { base64UrlDecode, base64UrlEncode, hmacSha256Base64Url, timingSafeEqualString } from './crypto';
 import type { Env } from './env';
-import { createInitialSeed, DATABASE_SCHEMA_VERSION, type DatabaseSchema } from './seed';
+import {
+  createInitialSeed,
+  DATABASE_SCHEMA_VERSION,
+  normalizeSeededSampleProduct,
+  SEEDED_SAMPLE_PRODUCT_IDS,
+  type DatabaseSchema,
+} from './seed';
 
 const SESSION_COOKIE = 'eramora_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
@@ -74,15 +80,10 @@ export async function initDb(env: Env): Promise<void> {
 
     if (row) {
       const data = JSON.parse(row.data) as PersistedDatabaseSchema;
-      if ((data.schemaVersion || 0) < DATABASE_SCHEMA_VERSION) {
-        delete data.orders;
-        delete data.reviews;
-        delete data.enquiries;
-        delete data.abandonedCarts;
-        delete data.coupons;
-        data.users = Array.isArray(data.users)
-          ? data.users.filter((user) => user.role === 'admin')
-          : [];
+      const storedSchemaVersion = Number.isSafeInteger(data.schemaVersion)
+        ? Number(data.schemaVersion)
+        : 0;
+      if (storedSchemaVersion < DATABASE_SCHEMA_VERSION) {
         const legacyImages = new Map([
           ['/src/assets/images/hero_eramora_atelier_1794827348612.jpg', '/brand/eramora/campaigns/brand-introduction.jpg'],
           ['/src/assets/images/product_candle_oud_velvet_1794827351032.jpg', '/brand/eramora/campaigns/fragrance-art.jpg'],
@@ -90,50 +91,88 @@ export async function initDb(env: Env): Promise<void> {
           ['/src/assets/images/product_gift_coffret_luxury_1794827351996.jpg', '/brand/eramora/campaigns/thoughtful-gifting.jpg'],
           ['/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg', '/brand/eramora/campaigns/brand-introduction.jpg'],
         ]);
+
+        if (storedSchemaVersion < 4) {
+          delete data.orders;
+          delete data.reviews;
+          delete data.enquiries;
+          delete data.abandonedCarts;
+          delete data.coupons;
+          data.users = Array.isArray(data.users)
+            ? data.users.filter((user) => user.role === 'admin')
+            : [];
+          if (Array.isArray(data.categories)) {
+            data.categories = data.categories.map((category) => ({
+              ...category,
+              image: legacyImages.get(category.image) || category.image,
+            }));
+          }
+          if (data.banners?.heroImage) {
+            data.banners.heroImage = legacyImages.get(data.banners.heroImage) || data.banners.heroImage;
+          }
+          if (data.banners?.campaignSubtitle?.startsWith('Every ERAMORA coffret arrives wrapped in warm ivory linen')) {
+            data.banners.campaignSubtitle =
+              'Explore gifting concepts and ask our concierge about current options and availability.';
+          }
+          if (data.settings) {
+            delete data.settings.freeShippingThreshold;
+            delete data.settings.standardShippingFee;
+            delete data.settings.giftWrapFee;
+            delete data.settings.gstRatePercent;
+            delete data.settings.taxInclusive;
+            delete data.settings.codEnabled;
+            delete data.settings.razorpayEnabled;
+            delete data.settings.lowStockThreshold;
+            delete data.settings.policies;
+          }
+        }
+
+        const legacyCategoryDescriptions = new Map([
+          ['cat-curated-fragrances', 'A curated edit of artisanal eau de parfum compositions crafted with slow maceration.'],
+          ['cat-scented-candles', 'Hand-poured botanical wax candles formulated for calm, luminous, and meditative evenings.'],
+          ['cat-sculptural-candles', 'Architectural candle forms hand-poured in natural soy and beeswax blends where form meets fragrance.'],
+          ['cat-diy-colouring-kits', 'Mindful art and botanical colouring kits designed for slow, unhurried, contemplative play.'],
+          ['cat-gifting', 'Artisanal gift coffrets presented in warm ivory linen boxes with champagne satin ribbons.'],
+        ]);
+        const safeCategoryDescriptions = new Map([
+          ['cat-curated-fragrances', 'Explore fragrance concepts in the ERAMORA sample catalogue. Notes, formulation, price and availability require confirmation.'],
+          ['cat-scented-candles', 'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.'],
+          ['cat-sculptural-candles', 'Explore sculptural candle concepts. Materials, dimensions, specifications and availability require confirmation.'],
+          ['cat-diy-colouring-kits', 'Explore creative-kit concepts. Materials, contents, specifications and availability require confirmation.'],
+          ['cat-gifting', 'Explore gifting concepts. Product combinations, presentation, pricing and delivery details are confirmed by the concierge.'],
+        ]);
         if (Array.isArray(data.categories)) {
-          data.categories = data.categories.map((category) => ({
-            ...category,
-            image: legacyImages.get(category.image) || category.image,
-          }));
+          data.categories = data.categories.map((category) =>
+            legacyCategoryDescriptions.get(category.id) === category.description
+              ? { ...category, description: safeCategoryDescriptions.get(category.id) || category.description }
+              : category
+          );
         }
-        const initialSeed = await createInitialSeed(env);
-        const seedProductMap = new Map(initialSeed.products.map((p) => [p.id, p]));
-        if (Array.isArray(data.products)) {
-          data.products = data.products.map((product) => {
-            if (product.id.startsWith('demo-') && seedProductMap.has(product.id)) {
-              return seedProductMap.get(product.id)!;
-            }
-            return {
-              ...product,
-              images: Array.isArray(product.images)
-                ? product.images.map((image) => legacyImages.get(image) || image)
-                : [],
-            };
-          });
-        } else {
-          data.products = initialSeed.products;
+
+        if (data.banners) {
+          if (data.banners.announcementText === 'Complimentary boutique shipping across India · Concierge assistance on WhatsApp') {
+            data.banners.announcementText = 'Product and gifting enquiries on WhatsApp';
+          }
+          if (data.banners.heroSubheadline === 'Curated fragrances, hand-poured candles and thoughtful gifting.') {
+            data.banners.heroSubheadline = 'Explore fragrance, candle and gifting concepts.';
+          }
+          if (
+            data.banners.campaignSubtitle ===
+              'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal handwritten note.' ||
+            data.banners.campaignSubtitle ===
+              'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal note.'
+          ) {
+            data.banners.campaignSubtitle =
+              'Explore gifting concepts and ask our concierge about current options and availability.';
+          }
         }
-        if (data.banners?.heroImage) {
-          data.banners.heroImage = legacyImages.get(data.banners.heroImage) || data.banners.heroImage;
-        }
-        if (
-          data.banners?.campaignSubtitle ===
-          'Every ERAMORA coffret arrives wrapped in warm ivory linen paper, sealed with champagne ribbon and your personal note.'
-        ) {
-          data.banners.campaignSubtitle =
-            'Explore gifting concepts and ask our concierge about current options and availability.';
-        }
-        if (data.settings) {
-          delete data.settings.freeShippingThreshold;
-          delete data.settings.standardShippingFee;
-          delete data.settings.giftWrapFee;
-          delete data.settings.gstRatePercent;
-          delete data.settings.taxInclusive;
-          delete data.settings.codEnabled;
-          delete data.settings.razorpayEnabled;
-          delete data.settings.lowStockThreshold;
-          delete data.settings.policies;
-        }
+
+        const sampleProductIds = new Set(SEEDED_SAMPLE_PRODUCT_IDS);
+        data.products = Array.isArray(data.products)
+          ? data.products.map((product) =>
+              sampleProductIds.has(product.id) ? normalizeSeededSampleProduct(product) : product
+            )
+          : [];
         data.schemaVersion = DATABASE_SCHEMA_VERSION;
 
         const result = await env.DB.prepare(
