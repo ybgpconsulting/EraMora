@@ -16,10 +16,18 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { WishlistPage } from './pages/WishlistPage';
 import { AboutPage, ContactPage, FaqPage, GrievancePage, PolicyPage } from './pages/EditorialPages';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { getLegacyCategorySlug } from './utils/routes';
 
 const AppRouter: React.FC = () => {
-  const { path } = useStore();
+  const { path, navigate } = useStore();
   const pathname = path.split('?')[0].replace(/\/+$/, '') || '/';
+  const legacyCategorySlug = getLegacyCategorySlug(pathname);
+
+  React.useEffect(() => {
+    if (legacyCategorySlug) {
+      navigate(`/shop?category=${encodeURIComponent(legacyCategorySlug)}`, true);
+    }
+  }, [legacyCategorySlug, navigate]);
 
   let page: React.ReactNode;
   if (pathname === '/') {
@@ -30,10 +38,8 @@ const AppRouter: React.FC = () => {
     page = <GiftingPage />;
   } else if (pathname === '/shop') {
     page = <ShopPage />;
-  } else if (/^\/(curated-fragrances|scented-candles|sculptural-candles|diy-colouring-kits|gifting)$/.test(pathname)) {
-    const slug = pathname.slice(1);
-    window.history.replaceState({}, '', `/shop?category=${slug}`);
-    page = <ShopPage />;
+  } else if (legacyCategorySlug) {
+    page = <ShopPage initialCategory={legacyCategorySlug} />;
   } else if (pathname.startsWith('/product/')) {
     const slug = pathname.slice('/product/'.length);
     page = <ProductDetailPage slug={slug} />;

@@ -17,7 +17,7 @@ interface ToastMessage {
 
 interface StoreContextValue {
   path: string;
-  navigate: (to: string) => void;
+  navigate: (to: string, replace?: boolean) => void;
   config: StorePublicConfig | null;
   settings: BusinessSettings;
   banners: BannerConfig;
@@ -147,12 +147,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 2800);
   }, []);
 
-  const navigate = useCallback((to: string) => {
+  const navigate = useCallback((to: string, replace = false) => {
     if (to === window.location.pathname + window.location.search) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    window.history.pushState({}, '', to);
+    if (replace) {
+      window.history.replaceState({}, '', to);
+    } else {
+      window.history.pushState({}, '', to);
+    }
     setPath(to);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, []);

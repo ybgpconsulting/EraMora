@@ -198,10 +198,11 @@ test('public product feed and sitemap exclude demo and archived products', async
     slug: 'saffron-noir',
     name: 'Saffron Noir',
     subtitle: 'Saffron and sandalwood',
+    categoryId: 'cat-fragrance',
     categoryName: 'Fragrance',
-    description: 'A warm eau de parfum.',
+    description: 'A warm eau de parfum composed with saffron, tea, and sandalwood for evening wear.',
     images: ['/uploads/saffron-noir.jpg'],
-    variants: [{ label: '50 ml', size: '50 ml', price: 2500, stock: 5 }],
+    variants: [{ id: 'variant-1', label: '50 ml', size: '50 ml', price: 2500, stock: 5, sku: 'ERA-001' }],
     isShowcaseDemo: true,
     isArchived: false,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -213,11 +214,16 @@ test('public product feed and sitemap exclude demo and archived products', async
     slug: 'approved-fragrance',
     isShowcaseDemo: false,
   };
+  const incompleteProducts = [
+    { ...approvedProduct, id: 'legacy-test-1', slug: 'asd', name: 'Asd', subtitle: '', description: '' },
+    { ...approvedProduct, id: 'legacy-test-2', slug: 'candle', name: 'cANDLE', subtitle: '', description: '' },
+  ];
   const storedData = JSON.stringify({
     schemaVersion: DATABASE_SCHEMA_VERSION,
     products: [
       product,
       approvedProduct,
+      ...incompleteProducts,
       { ...product, slug: 'archived-item', isArchived: true, isShowcaseDemo: false },
     ],
     reviews: [{ id: 'legacy-review', productId: product.id, authorName: 'Historical Customer' }],
@@ -260,6 +266,27 @@ test('public product feed and sitemap exclude demo and archived products', async
   assert.equal(feedResponse.status, 200);
   assert.deepEqual(feed.products.map((item) => item.slug), ['approved-fragrance']);
 
+  const catalogResponse = await handleRequest(new Request('https://store.example/api/products'), env);
+  const catalog = (await catalogResponse.json()) as Array<{ slug: string }>;
+  assert.equal(catalogResponse.status, 200);
+  assert.deepEqual(
+    catalog.map((item) => item.slug).sort(),
+    ['approved-fragrance', 'saffron-noir']
+  );
+
+  for (const productSlug of ['asd', 'candle']) {
+    const productResponse = await handleRequest(
+      new Request(`https://store.example/api/products/${productSlug}`),
+      env
+    );
+    assert.equal(productResponse.status, 404, `${productSlug} should not be publicly accessible`);
+    const productPageResponse = await handleRequest(
+      new Request(`https://store.example/product/${productSlug}`),
+      env
+    );
+    assert.equal(productPageResponse.status, 404, `${productSlug} page should return 404`);
+  }
+
   const sitemapResponse = await handleRequest(new Request('https://store.example/sitemap.xml'), env);
   const sitemap = await sitemapResponse.text();
   assert.equal(sitemapResponse.status, 200);
@@ -268,6 +295,8 @@ test('public product feed and sitemap exclude demo and archived products', async
   assert.ok(sitemap.includes('https://eramora.in/grievance-redressal'));
   assert.ok(!sitemap.includes('?category='));
   assert.ok(!sitemap.includes('saffron-noir'));
+  assert.ok(!sitemap.includes('/product/asd'));
+  assert.ok(!sitemap.includes('/product/candle'));
   assert.ok(!sitemap.includes('archived-item'));
 
   let robotsContent = '';

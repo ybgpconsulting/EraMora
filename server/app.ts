@@ -185,6 +185,22 @@ async function validateCommercialProductInput(
   return { input: { name, subtitle, description, category, images, variants } };
 }
 
+function isEligibleForPublicListing(product: Product): boolean {
+  if (product.isShowcaseDemo) return true;
+
+  const images = parseProductImages(product.images);
+  return Boolean(
+    sanitizeString(product.name, 140) &&
+      sanitizeString(product.subtitle, 160) &&
+      sanitizeString(product.description, 2000).length >= 40 &&
+      sanitizeString(product.categoryId, 120) &&
+      sanitizeString(product.categoryName, 80) &&
+      images &&
+      !containsOnlyGenericCampaignImages(images) &&
+      parseProductVariants(product.variants, false)
+  );
+}
+
 function normalizeDemoProduct(product: Product): Product {
   return normalizeSeededSampleProduct({
     ...product,
@@ -263,7 +279,7 @@ router.get('/api/products', (req, res) => {
   const inStockOnly = req.query.inStock === 'true';
   const sort = typeof req.query.sort === 'string' ? req.query.sort : 'featured';
 
-  let list = db.products.filter((p) => !p.isArchived);
+  let list = db.products.filter((product) => !product.isArchived && isEligibleForPublicListing(product));
 
   if (category && category !== 'all') {
     list = list.filter(
@@ -319,15 +335,32 @@ router.get('/api/products', (req, res) => {
 
 router.get('/api/products/:slug', (req, res) => {
   const db = getDb();
-  const product = db.products.find((p) => p.slug === req.params.slug && !p.isArchived);
+  const product = db.products.find(
+    (candidate) =>
+      candidate.slug === req.params.slug &&
+      !candidate.isArchived &&
+      isEligibleForPublicListing(candidate)
+  );
   if (!product) {
     return res.status(404).json({ error: 'Product not found.' });
   }
   const related = db.products
-    .filter((p) => p.id !== product.id && !p.isArchived && p.categoryId === product.categoryId)
+    .filter(
+      (candidate) =>
+        candidate.id !== product.id &&
+        !candidate.isArchived &&
+        isEligibleForPublicListing(candidate) &&
+        candidate.categoryId === product.categoryId
+    )
     .slice(0, 3);
   const recommendations = db.products
-    .filter((p) => p.id !== product.id && !p.isArchived && p.categoryId !== product.categoryId)
+    .filter(
+      (candidate) =>
+        candidate.id !== product.id &&
+        !candidate.isArchived &&
+        isEligibleForPublicListing(candidate) &&
+        candidate.categoryId !== product.categoryId
+    )
     .slice(0, 3);
   res.json({ product, related, recommendations });
 });
@@ -815,6 +848,7 @@ function renderSitemap(): Response {
     ...db.products
       .filter((product) => !product.isArchived)
       .filter((product) => !product.isShowcaseDemo)
+      .filter(isEligibleForPublicListing)
       .map((product) => {
         const lastModified = product.updatedAt || product.createdAt;
         const lastmod = /^\d{4}-\d{2}-\d{2}/.test(lastModified)
@@ -837,6 +871,7 @@ function renderSitemap(): Response {
 function renderProductFeed(): Response {
   const products = getDb().products
     .filter((product) => !product.isArchived && !product.isShowcaseDemo)
+    .filter(isEligibleForPublicListing)
     .map((product) => ({
       name: product.name,
       slug: product.slug,
@@ -1124,7 +1159,10 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     if (productMatch) {
       await initDb(env);
       const product = getDb().products.find(
-        (entry) => entry.slug === productMatch[1] && !entry.isArchived
+        (entry) =>
+          entry.slug === productMatch[1] &&
+          !entry.isArchived &&
+          isEligibleForPublicListing(entry)
       );
       if (!product) {
         const notFound = await env.ASSETS.fetch(request);

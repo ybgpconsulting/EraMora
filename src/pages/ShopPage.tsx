@@ -5,11 +5,11 @@ import { SeoHead } from '../components/SeoHead';
 import { ProductCard } from '../components/ProductCard';
 import { SEO_PAGES } from '../utils/seo';
 
-export const ShopPage: React.FC = () => {
+export const ShopPage: React.FC<{ initialCategory?: string }> = ({ initialCategory }) => {
   const { path, navigate, categories, products, loadingCatalog } = useStore();
 
   const urlParams = new URLSearchParams(path.split('?')[1] || '');
-  const initialCat = urlParams.get('category') || 'all';
+  const initialCat = urlParams.get('category') || initialCategory || 'all';
   const initialQ = urlParams.get('q') || '';
 
   const [selectedCategory, setSelectedCategory] = useState(initialCat);
@@ -22,9 +22,9 @@ export const ShopPage: React.FC = () => {
   // Keep synced when URL changes via navbar links
   React.useEffect(() => {
     const params = new URLSearchParams(path.split('?')[1] || '');
-    setSelectedCategory(params.get('category') || 'all');
+    setSelectedCategory(params.get('category') || initialCategory || 'all');
     if (params.has('q')) setSearchQuery(params.get('q') || '');
-  }, [path]);
+  }, [path, initialCategory]);
 
   const filteredProducts = useMemo(() => {
     let list = [...products];
