@@ -14,7 +14,8 @@ test('first-run seed creates all DIY products as priced items and keeps concept 
     assert.equal(product.variants.every((variant) => variant.price === 0 && variant.stock === 0), true);
   }
 
-  const diyProducts = seed.products.filter((product) => product.categoryId === DIY_KIT_CATEGORY_ID);
+  const diyCategoryProducts = seed.products.filter((product) => product.categoryId === DIY_KIT_CATEGORY_ID);
+  const diyProducts = diyCategoryProducts.filter((product) => !product.isShowcaseDemo);
   assert.equal(diyProducts.length, DIY_KIT_CATALOGUE.length);
   assert.equal(DIY_KIT_PRICE_INR, 199);
   assert.ok(seed.categories.some((category) => category.id === DIY_KIT_CATEGORY_ID));
