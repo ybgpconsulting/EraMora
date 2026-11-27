@@ -40,6 +40,7 @@ export function isScannerProbePath(pathname: string): boolean {
     SCANNER_PATH_SEGMENTS.has(segment) ||
     segment === '.env' ||
     segment.startsWith('.env.') ||
-    segment.startsWith('wp-config.php.')
+    segment.startsWith('wp-config.php.') ||
+    /\.php(?:\d+)?(?:$|[.~_-])/.test(segment)
   ) || segments.some((segment, index) => segment === 'vendor' && segments[index + 1] === 'phpunit');
 }

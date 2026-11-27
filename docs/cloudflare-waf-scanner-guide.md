@@ -44,6 +44,10 @@ and (
 
 The paths cover the observed `/ms-edit.php` probe and common WordPress, environment-file, exposed repository, database-admin, PHP-info, network-device, PHPUnit, CGI, and actuator scanner families. The `/.well-known/` exclusion preserves ACME challenges and other well-known resources.
 
+## Worker request handling
+
+The Worker rejects known scanner paths, including PHP script paths, before calling the `ASSETS` binding. Other page requests use `ASSETS.fetch()` for the configured `./dist` static assets and SPA fallback; this is not a proxy to a WordPress or other upstream origin. Keep the Worker guard and its tests as the application-level control. A WAF rule is optional defense in depth and must be reviewed separately before applying it.
+
 ## Rollout
 
 1. Review the expression against the zone's application routes and current security events.

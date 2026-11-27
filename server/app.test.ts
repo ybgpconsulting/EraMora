@@ -499,16 +499,31 @@ test('new products default to unpublished demo concepts and assigned categories 
 });
 
 test('scanner probe paths are blocked before redirects and asset routing while .well-known remains available', async () => {
+  let assetFetchCount = 0;
   const env = {
     ENVIRONMENT: 'production',
-    ASSETS: { fetch: async () => new Response('asset', { status: 200 }) },
+    ASSETS: {
+      fetch: async () => {
+        assetFetchCount += 1;
+        return new Response('asset', { status: 200 });
+      },
+    },
   } as unknown as Env;
   const scannerPaths = [
     '/ms-edit.php',
     '/%6d%73-edit.php',
     '/%256d%2573-edit.php',
     '/wp-login.php',
+    '/%2577p-login.php',
+    '/wp-admin/',
     '/wp-admin/setup.php',
+    '/wp-admin/images/edit.php',
+    '/WP-ADMIN/Images/EDIT.PHP',
+    '/wp-signup.php',
+    '/wp-cron.php',
+    '/index.php',
+    '/%69ndex%2ephp',
+    '/%2569ndex%252ephp',
     '/wp-config.php.bak',
     '/xmlrpc.php',
     '/.env',
@@ -525,13 +540,16 @@ test('scanner probe paths are blocked before redirects and asset routing while .
     const response = await handleRequest(new Request(`http://store.example${path}`), env);
     assert.equal(response.status, 404, `${path} should be rejected before HTTPS redirect`);
   }
+  assert.equal(assetFetchCount, 0, 'scanner paths must not be forwarded to the asset binding');
 
   const workerResponse = await worker.fetch(
-    new Request('https://store.example/ms-edit.php'),
+    new Request('https://store.example/wp-admin/images/edit.php'),
     env
   );
   assert.equal(workerResponse.status, 404);
   assert.equal(workerResponse.headers.get('cache-control'), 'no-store');
+  assert.equal(await workerResponse.text(), 'Not Found');
+  assert.equal(assetFetchCount, 0, 'Worker entry point must reject probes before asset fetch');
 
   const wellKnownResponse = await handleRequest(
     new Request('https://store.example/.well-known/acme-challenge/example-token'),
@@ -539,6 +557,16 @@ test('scanner probe paths are blocked before redirects and asset routing while .
   );
   assert.equal(wellKnownResponse.status, 200);
   assert.equal(await wellKnownResponse.text(), 'asset');
+  for (const path of [
+    '/shop',
+    '/admin',
+    '/diy-colouring-kits',
+    '/products/diy-colouring-kits/rose-lid-jar-tray.webp',
+  ]) {
+    const response = await worker.fetch(new Request(`https://store.example${path}`), env);
+    assert.equal(response.status, 200, `${path} should remain available`);
+  }
+  assert.equal(assetFetchCount, 5, 'legitimate storefront and static asset requests should use ASSETS');
 });
 
 test('public config hides the unverified studio address while admins retain access to settings', async () => {
@@ -580,12 +608,26 @@ test('public config hides the unverified studio address while admins retain acce
     env
   );
   assert.equal(privateResponse.status, 403);
+  const adminCatalogueResponse = await handleRequest(
+    new Request('https://store.example/api/admin/products'),
+    env
+  );
+  assert.equal(adminCatalogueResponse.status, 403, 'legitimate admin API paths must not be scanner-blocked');
 
   const token = await signSessionToken(env, {
     userId: 'admin-1',
     role: 'admin',
     email: 'admin@example.com',
   });
+  const authorizedCatalogueResponse = await handleRequest(
+    new Request('https://store.example/api/admin/products', {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env
+  );
+  assert.equal(authorizedCatalogueResponse.status, 200);
+  assert.deepEqual(await authorizedCatalogueResponse.json(), []);
+
   const adminResponse = await handleRequest(
     new Request('https://store.example/api/admin/settings', {
       headers: { authorization: `Bearer ${token}` },
