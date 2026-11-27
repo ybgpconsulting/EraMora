@@ -9,7 +9,7 @@ import type {
 } from '../src/types/store';
 import { ensureDiyColouringKitCatalog } from './diy-colouring-kits';
 
-export const DATABASE_SCHEMA_VERSION = 7;
+export const DATABASE_SCHEMA_VERSION = 9;
 
 export const SEEDED_SAMPLE_PRODUCT_IDS = Array.from(
   { length: 25 },
@@ -950,7 +950,7 @@ export async function createInitialSeed(env?: Env): Promise<DatabaseSchema> {
 
   const banners: BannerConfig = {
     id: 'main-banners',
-    announcementText: 'Product and gifting enquiries on WhatsApp',
+    announcementText: 'Scented candle and kids’ colouring kit enquiries on WhatsApp',
     heroEyebrow: 'ERAMORA · Atelier Collection',
     heroHeadline: 'Where Fragrance Meets Emotion.',
     heroSubheadline: 'Explore fragrance, candle and gifting concepts.',

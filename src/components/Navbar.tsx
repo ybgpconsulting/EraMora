@@ -5,6 +5,7 @@ import { BrandLogo } from './BrandLogo';
 import { ImageWithFallback } from './ImageWithFallback';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { buildGeneralWhatsAppUrl, formatINR } from '../utils/commerce';
+import { getCurrentStoreProducts, getProductImage } from '../utils/catalogue';
 import { useModalFocus } from '../hooks/useModalFocus';
 
 export const Navbar: React.FC = () => {
@@ -12,6 +13,7 @@ export const Navbar: React.FC = () => {
     path,
     navigate,
     banners,
+    categories,
     products,
     cartCount,
     wishlist,
@@ -26,6 +28,10 @@ export const Navbar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuDialogRef = useModalFocus<HTMLDivElement>(menuOpen, () => setMenuOpen(false));
   const searchDialogRef = useModalFocus<HTMLDivElement>(isSearchOpen, () => setIsSearchOpen(false));
+  const storefrontProducts = useMemo(
+    () => getCurrentStoreProducts(products, categories),
+    [categories, products]
+  );
 
   const isAdmin = path.startsWith('/admin');
   const basePath = path.split('?')[0].replace(/\/+$/, '') || '/';
@@ -36,8 +42,8 @@ export const Navbar: React.FC = () => {
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return products.slice(0, 4);
-    return products
+    if (!q) return storefrontProducts.slice(0, 4);
+    return storefrontProducts
       .filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
@@ -45,23 +51,21 @@ export const Navbar: React.FC = () => {
           p.categoryName.toLowerCase().includes(q)
       )
       .slice(0, 6);
-  }, [searchQuery, products]);
+  }, [searchQuery, storefrontProducts]);
 
   const navLinks = [
     { label: 'Home', href: '/' },
-    { label: 'Fragrances', href: '/shop?category=curated-fragrances' },
     { label: 'Candles', href: '/shop?category=scented-candles' },
-    { label: 'Gifting', href: '/gifting' },
+    { label: 'Kids’ DIY Kits', href: '/shop?category=diy-colouring-kits' },
+    { label: 'Collections', href: '/collections' },
     { label: 'About', href: '/about' },
   ];
 
   const menuLinks = [
     { label: 'Home', href: '/' },
-    { label: 'Curated Fragrances', href: '/shop?category=curated-fragrances' },
     { label: 'Scented Candles', href: '/shop?category=scented-candles' },
-    { label: 'Sculptural Candles', href: '/shop?category=sculptural-candles' },
-    { label: 'DIY Colouring Kits', href: '/shop?category=diy-colouring-kits' },
-    { label: 'Gifting', href: '/gifting' },
+    { label: 'Kids’ DIY Colouring Kits', href: '/shop?category=diy-colouring-kits' },
+    { label: 'All Collections', href: '/collections' },
     { label: 'Our Story', href: '/about' },
     { label: 'Contact', href: '/contact' },
   ];
@@ -83,7 +87,7 @@ export const Navbar: React.FC = () => {
 
   const waUrl = buildGeneralWhatsAppUrl(
     settings.whatsappNumber,
-    `Hello ${settings.brandName}, I would like fragrance recommendations or ordering assistance.`
+    `Hello ${settings.brandName}, I would like recommendations or availability information for scented candles and kids' DIY colouring kits.`
   );
   const phoneUrl = `tel:${settings.supportPhone.replace(/[^\d+]/g, '')}`;
 
@@ -154,7 +158,7 @@ export const Navbar: React.FC = () => {
               onClick={() => setIsSearchOpen(true)}
               aria-label="Search ERAMORA catalogue"
               aria-controls="catalog-search-dialog"
-              className="flex h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#B89352] cursor-pointer"
+              className="flex h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#765A2E] cursor-pointer"
             >
               <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
             </button>
@@ -163,7 +167,7 @@ export const Navbar: React.FC = () => {
               href="/wishlist"
               onClick={(e) => handleNavClick(e, '/wishlist')}
               aria-label={`Wishlist (${wishlist.length} saved)`}
-              className="relative hidden h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#B89352] md:flex"
+              className="relative hidden h-11 min-w-11 items-center justify-center text-[#2C1E16] transition-colors hover:text-[#765A2E] md:flex"
             >
               <Heart className="h-[18px] w-[18px]" strokeWidth={1.5} />
               {wishlist.length > 0 && (
@@ -184,7 +188,7 @@ export const Navbar: React.FC = () => {
             <a
               href={phoneUrl}
               aria-label={`Call ERAMORA at ${settings.supportPhone}`}
-              className="hidden h-11 items-center justify-center gap-2 text-[#2C1E16] transition-colors hover:text-[#B89352] sm:flex sm:min-w-11 xl:px-2"
+              className="hidden h-11 items-center justify-center gap-2 text-[#2C1E16] transition-colors hover:text-[#765A2E] sm:flex sm:min-w-11 xl:px-2"
             >
               <Phone className="h-[17px] w-[17px]" strokeWidth={1.5} />
               <span className="hidden text-[10px] tracking-[0.12em] xl:inline">{settings.supportPhone}</span>
@@ -195,7 +199,7 @@ export const Navbar: React.FC = () => {
               onClick={() => setIsCartOpen(true)}
               aria-label={`Shopping bag (${cartCount} items)`}
               aria-controls="cart-drawer"
-              className="relative flex h-11 min-w-11 items-center justify-center gap-1 text-[#2C1E16] transition-colors hover:text-[#B89352] cursor-pointer"
+              className="relative flex h-11 min-w-11 items-center justify-center gap-1 text-[#2C1E16] transition-colors hover:text-[#765A2E] cursor-pointer"
             >
               <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
               {cartCount > 0 && (
@@ -237,7 +241,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-6">
-              <p className="luxe-eyebrow text-[#B89352]">The House</p>
+              <p className="luxe-eyebrow text-[#765A2E]">The House</p>
               <nav aria-label="Mobile Navigation" className="mt-3 flex flex-col">
                 {menuLinks.map((link, i) => (
                   <a
@@ -250,12 +254,12 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     <span className="flex items-baseline gap-3.5">
-                      <span className="text-[9px] tabular-nums tracking-[0.24em] text-[#B89352]">
+                      <span className="text-[9px] tabular-nums tracking-[0.24em] text-[#765A2E]">
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="font-serif text-[25px] leading-none text-[#2C1E16]">{link.label}</span>
                     </span>
-                    <ArrowUpRight className="h-4 w-4 text-[#2C1E16]/25 transition-colors group-hover:text-[#B89352]" />
+                    <ArrowUpRight className="h-4 w-4 text-[#2C1E16]/25 transition-colors group-hover:text-[#765A2E]" />
                   </a>
                 ))}
               </nav>
@@ -319,7 +323,7 @@ export const Navbar: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 border-b border-[#2C1E16]/15 pb-3">
-              <Search className="h-[18px] w-[18px] text-[#B89352]" strokeWidth={1.5} />
+              <Search className="h-[18px] w-[18px] text-[#765A2E]" strokeWidth={1.5} />
               <input
                 type="search"
                 value={searchQuery}
@@ -330,8 +334,8 @@ export const Navbar: React.FC = () => {
                     navigate(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
                   }
                 }}
-                placeholder="Search candles, saffron perfume, reed diffusers, gift sets..."
-                aria-label="Search fragrances and candles"
+                placeholder="Search scented candles, colouring kits, jars, bowls..."
+                aria-label="Search scented candles and kids’ DIY colouring kits"
                 className="w-full bg-transparent text-base text-[#2C1E16] placeholder-[#6B584C]/60 focus:outline-none"
               />
               <button
@@ -356,7 +360,7 @@ export const Navbar: React.FC = () => {
                       setIsSearchOpen(false);
                       navigate(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
                     }}
-                    className="text-[10px] uppercase tracking-[0.18em] text-[#2C1E16] underline underline-offset-4 hover:text-[#B89352] cursor-pointer"
+                    className="text-[10px] uppercase tracking-[0.18em] text-[#2C1E16] underline underline-offset-4 hover:text-[#765A2E] cursor-pointer"
                   >
                     View all results
                   </button>
@@ -365,7 +369,7 @@ export const Navbar: React.FC = () => {
 
               {searchResults.length === 0 ? (
                 <p className="py-8 text-center text-sm text-[#6B584C]">
-                  No creations matched “{searchQuery}”. Try Amber, Saffron, Diffuser or Coffret.
+                  No creations matched “{searchQuery}”. Try candles, colouring kits, jars or bowls.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -380,12 +384,12 @@ export const Navbar: React.FC = () => {
                       className="group flex items-center gap-3.5 border border-[#2C1E16]/8 p-2.5 text-left transition-colors hover:border-[#B89352]/60 cursor-pointer"
                     >
                       <ImageWithFallback
-                        src={prod.images[0]}
+                        src={getProductImage(prod)}
                         alt={prod.name}
                         className="h-14 w-14 shrink-0 object-cover"
                       />
                       <div className="min-w-0">
-                        <p className="truncate font-serif text-base text-[#2C1E16] group-hover:text-[#B89352]">
+                        <p className="truncate font-serif text-base text-[#2C1E16] group-hover:text-[#765A2E]">
                           {prod.name}
                         </p>
                         <p className="text-[11px] text-[#6B584C] tabular-nums">

@@ -66,7 +66,7 @@ const DEFAULT_SETTINGS: BusinessSettings = {
 
 const DEFAULT_BANNERS: BannerConfig = {
   id: 'main-banners',
-  announcementText: 'Personal fragrance and gifting enquiries available on WhatsApp',
+  announcementText: 'Scented candle and kids’ colouring kit enquiries available on WhatsApp',
   heroEyebrow: 'ERAMORA · Atelier Collection',
   heroHeadline: 'Where Fragrance Meets Emotion.',
   heroSubheadline:

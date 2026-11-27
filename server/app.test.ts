@@ -390,7 +390,7 @@ test('public product feed and sitemap exclude demo and archived products', async
       robotsContent = '';
       const aliasResponse = await handleRequest(new Request(`https://store.example${path}`), env);
       assert.equal(aliasResponse.status, 200);
-      assert.equal(titleContent, 'Shop Fragrances, Candles & Gifts | ERAMORA');
+      assert.equal(titleContent, 'Shop Scented Candles & Kids’ DIY Colouring Kits | ERAMORA');
       assert.equal(canonicalHref, 'https://eramora.in/shop');
       assert.equal(
         robotsContent,

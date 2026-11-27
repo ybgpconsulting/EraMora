@@ -33,7 +33,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'ERAMORA',
           short_name: 'ERAMORA',
-          description: 'Curated fragrances, candles and gifting. Make every moment memorable.',
+          description: 'Scented candles and kids’ DIY colouring kits. Enquire on WhatsApp to confirm current availability.',
           theme_color: '#2C1E16',
           background_color: '#FAF7F2',
           display: 'standalone',

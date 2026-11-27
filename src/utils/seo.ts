@@ -13,15 +13,15 @@ export interface PageSeoMetadata {
 
 export const SEO_PAGES = {
   home: {
-    title: 'ERAMORA | Fragrances, Candles & Thoughtful Gifting',
+    title: 'ERAMORA | Scented Candles & Kids’ DIY Colouring Kits',
     description:
-      "Discover ERAMORA fragrances, scented candles and gifting concepts. Enquire on WhatsApp to confirm current products and availability.",
+      'Explore ERAMORA scented candles and kids’ DIY colouring kits. Contact our WhatsApp Concierge to confirm product details and current availability.',
     canonicalPath: '/',
   },
   collections: {
-    title: 'Fragrance, Candle & Gifting Collections | ERAMORA',
+    title: 'Scented Candles & Kids’ DIY Colouring Kits | ERAMORA',
     description:
-      "Explore ERAMORA's curated fragrances, scented candles, sculptural candles, creative kits and gifting concepts.",
+      'Discover ERAMORA scented candles and creative DIY colouring kits for children. Ask our WhatsApp Concierge to confirm current designs and availability.',
     canonicalPath: '/collections',
   },
   gifting: {
@@ -31,9 +31,9 @@ export const SEO_PAGES = {
     canonicalPath: '/gifting',
   },
   shop: {
-    title: 'Shop Fragrances, Candles & Gifts | ERAMORA',
+    title: 'Shop Scented Candles & Kids’ DIY Colouring Kits | ERAMORA',
     description:
-      "Explore ERAMORA's current fragrance, candle and gifting catalogue. Contact the WhatsApp concierge to confirm product details and availability.",
+      'Browse ERAMORA scented candles and kids’ DIY colouring kits. Product details and availability are confirmed by the WhatsApp Concierge.',
     canonicalPath: '/shop',
   },
   about: {

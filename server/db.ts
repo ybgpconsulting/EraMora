@@ -130,6 +130,7 @@ export async function initDb(env: Env): Promise<void> {
 
         const legacyCategoryDescriptions = new Map([
           ['cat-curated-fragrances', 'A curated edit of artisanal eau de parfum compositions crafted with slow maceration.'],
+          ['cat-candles', 'Hand-poured soy-beeswax blend vessels designed for slow, luminous evenings.'],
           ['cat-scented-candles', 'Hand-poured botanical wax candles formulated for calm, luminous, and meditative evenings.'],
           ['cat-sculptural-candles', 'Architectural candle forms hand-poured in natural soy and beeswax blends where form meets fragrance.'],
           ['cat-diy-colouring-kits', 'Mindful art and botanical colouring kits designed for slow, unhurried, contemplative play.'],
@@ -137,6 +138,7 @@ export async function initDb(env: Env): Promise<void> {
         ]);
         const safeCategoryDescriptions = new Map([
           ['cat-curated-fragrances', 'Explore fragrance concepts in the ERAMORA sample catalogue. Notes, formulation, price and availability require confirmation.'],
+          ['cat-candles', 'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.'],
           ['cat-scented-candles', 'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.'],
           ['cat-sculptural-candles', 'Explore sculptural candle concepts. Materials, dimensions, specifications and availability require confirmation.'],
           ['cat-diy-colouring-kits', 'Explore creative-kit concepts. Materials, contents, specifications and availability require confirmation.'],
@@ -151,8 +153,11 @@ export async function initDb(env: Env): Promise<void> {
         }
 
         if (data.banners) {
-          if (data.banners.announcementText === 'Complimentary boutique shipping across India · Concierge assistance on WhatsApp') {
-            data.banners.announcementText = 'Product and gifting enquiries on WhatsApp';
+          if (
+            data.banners.announcementText === 'Complimentary boutique shipping across India · Concierge assistance on WhatsApp' ||
+            data.banners.announcementText === 'Product and gifting enquiries on WhatsApp'
+          ) {
+            data.banners.announcementText = 'Scented candle and kids’ colouring kit enquiries on WhatsApp';
           }
           if (data.banners.heroSubheadline === 'Curated fragrances, hand-poured candles and thoughtful gifting.') {
             data.banners.heroSubheadline = 'Explore fragrance, candle and gifting concepts.';

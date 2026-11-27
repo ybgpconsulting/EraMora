@@ -1,162 +1,229 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import React from 'react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
+import { SeoHead } from '../components/SeoHead';
+import { buildGeneralWhatsAppUrl } from '../utils/commerce';
+import { getCurrentStoreCategories, getCurrentStoreProducts, getProductImage } from '../utils/catalogue';
 import { SEO_PAGES } from '../utils/seo';
 
-type ShowcaseTab = 'featured' | 'fragrance' | 'candles' | 'sculptural' | 'diy' | 'gifting';
+const CANDLE_IMAGE = '/src/assets/images/product_candle_oud_velvet_1794827351032.jpg';
+const DIY_IMAGE = '/products/diy-colouring-kits/rose-lid-jar-tray.webp';
 
-const TABS: Array<[ShowcaseTab, string]> = [
-  ['featured', 'Featured'],
-  ['fragrance', 'Curated Fragrances'],
-  ['candles', 'Scented Candles'],
-  ['sculptural', 'Sculptural Candles'],
-  ['diy', 'DIY Colouring Kits'],
-  ['gifting', 'Gifting'],
-];
-
-const HERO_IMAGE = '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg';
+const COLLECTIONS = [
+  {
+    slug: 'scented-candles',
+    id: 'cat-scented-candles',
+    title: 'Scented Candles',
+    heading: 'A little warmth for home.',
+    description: 'Explore the candle collection and ask our concierge to confirm current designs and availability.',
+    fallbackImage: CANDLE_IMAGE,
+    imageAlt: 'ERAMORA scented candle collection',
+    imageFit: 'cover',
+    accent: 'text-[#765A2E]',
+  },
+  {
+    slug: 'diy-colouring-kits',
+    id: 'cat-diy-colouring-kits',
+    title: "Kids’ DIY Colouring Kits",
+    heading: 'Colour outside the lines.',
+    description: 'Decorative white jars, bowls, trays and trinket dishes for children to personalise with colour.',
+    fallbackImage: DIY_IMAGE,
+    imageAlt: 'Unpainted white DIY colouring kit design',
+    imageFit: 'contain',
+    accent: 'text-[#A65F43]',
+  },
+] as const;
 
 export const CollectionsPage: React.FC = () => {
-  const { categories, products, navigate, loadingCatalog } = useStore();
-  const [activeTab, setActiveTab] = useState<ShowcaseTab>('featured');
-
-  const displayedProducts = useMemo(() => {
-    if (activeTab === 'candles') return products.filter((p) => p.categoryId === 'cat-scented-candles').slice(0, 6);
-    if (activeTab === 'fragrance') return products.filter((p) => p.categoryId === 'cat-curated-fragrances').slice(0, 6);
-    if (activeTab === 'sculptural') return products.filter((p) => p.categoryId === 'cat-sculptural-candles').slice(0, 6);
-    if (activeTab === 'diy') return products.filter((p) => p.categoryId === 'cat-diy-colouring-kits').slice(0, 6);
-    if (activeTab === 'gifting') return products.filter((p) => p.categoryId === 'cat-gifting').slice(0, 6);
-    return products.filter((p) => p.isFeatured).slice(0, 6);
-  }, [activeTab, products]);
+  const { categories, products, navigate, settings, loadingCatalog } = useStore();
+  const currentCategories = getCurrentStoreCategories(categories);
+  const currentProducts = getCurrentStoreProducts(products, categories);
+  const whatsappUrl = buildGeneralWhatsAppUrl(
+    settings.whatsappNumber,
+    `Hello ${settings.brandName}, please let me know about current scented candle and kids' DIY colouring kit availability.`
+  );
 
   return (
     <div className="bg-[#FAF7F2]">
       <SeoHead {...SEO_PAGES.collections} />
 
-      <section className="relative h-[46svh] min-h-[340px] overflow-hidden md:h-[56svh]">
-        <img src={HERO_IMAGE} alt="ERAMORA candle ritual on travertine with brass trimmer" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/90 via-[#1B120D]/35 to-[#1B120D]/30" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-7xl px-5 pb-10 md:px-10 md:pb-14">
-          <p className="luxe-eyebrow text-[#C5A059]">The Catalogue</p>
-          <h1 className="mt-3 text-balance font-serif text-4xl leading-[1.02] text-[#FAF7F2] md:text-6xl">
-            The Collections
-          </h1>
-          <p className="mt-3 max-w-lg text-[13px] leading-relaxed text-[#FAF7F2]/70 md:text-[15px]">
-            Every ERAMORA object begins with a memory. Explore the house by fragrance family, gesture and room.
-          </p>
+      <section className="relative overflow-hidden bg-[#241811] text-[#FAF7F2]">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 lg:min-h-[470px] lg:grid-cols-[1fr_0.85fr]">
+          <div className="flex flex-col justify-center px-5 py-14 sm:px-8 md:px-10 lg:py-20">
+            <p className="luxe-eyebrow text-[#D4B77D]">The ERAMORA edit</p>
+            <h1 className="mt-4 max-w-2xl text-balance font-serif text-4xl leading-[1.02] md:text-6xl">
+              Candles for home.
+              <span className="mt-1 block text-[#D4B77D]">Colour kits for kids.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-sm leading-7 text-[#FAF7F2]/72 md:text-base">
+              We’re keeping things focused: scented candles and hands-on DIY colouring kits. Ask our WhatsApp
+              Concierge to confirm product details and current availability.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/shop?category=scented-candles')}
+                className="inline-flex min-h-11 items-center gap-2 bg-[#FAF7F2] px-5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#241811] transition-colors hover:bg-[#E9DFC9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B77D] cursor-pointer"
+              >
+                Explore candles
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/shop?category=diy-colouring-kits')}
+                className="inline-flex min-h-11 items-center gap-2 border border-[#FAF7F2]/40 px-5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#FAF7F2] transition-colors hover:border-[#D4B77D] hover:text-[#E2C792] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B77D] cursor-pointer"
+              >
+                Explore kids’ kits
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="relative min-h-[310px] overflow-hidden bg-[#3A291F] sm:min-h-[390px] lg:min-h-0">
+            <ImageWithFallback
+              src={CANDLE_IMAGE}
+              alt="Scented candle in a warm home setting"
+              loading="eager"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/65 via-transparent to-[#1B120D]/10" />
+            <div className="absolute bottom-5 left-5 border-l border-[#D4B77D] pl-3 sm:bottom-7 sm:left-7">
+              <p className="luxe-eyebrow text-[#E1C58B]">For everyday rituals</p>
+              <p className="mt-1 font-serif text-xl">A thoughtful little edit.</p>
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-14 md:px-10 md:py-20">
-        <Reveal className="flex flex-col gap-3 border-b border-[#2C1E16]/10 pb-8 md:flex-row md:items-end md:justify-between">
+        <Reveal className="flex flex-col gap-3 border-b border-[#2C1E16]/10 pb-7 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="luxe-eyebrow text-[#B89352]">By Category</p>
-            <h2 className="mt-3 font-serif text-3xl leading-tight md:text-4xl">Five expressions of the house.</h2>
+            <p className="luxe-eyebrow text-[#765A2E]">Shop by collection</p>
+            <h2 className="mt-3 font-serif text-3xl leading-tight text-[#2C1E16] md:text-4xl">
+              Two ways to make a moment.
+            </h2>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/shop')}
-            className="group inline-flex items-center gap-2 self-start text-[10px] uppercase tracking-[0.24em] text-[#2C1E16] md:self-auto cursor-pointer"
-          >
-            Browse the full catalogue
-            <ArrowUpRight className="h-3.5 w-3.5 text-[#B89352] transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </button>
+          <p className="max-w-md text-sm leading-relaxed text-[#6B584C] md:text-right">
+            Find a gentle glow for your space or a creative project to share with your little ones.
+          </p>
         </Reveal>
 
-        <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 md:gap-x-5 lg:grid-cols-3">
-          {categories.map((cat, i) => (
-            <Reveal key={cat.id} delay={i * 55}>
-              <button
-                type="button"
-                onClick={() => navigate(`/shop?category=${cat.slug}`)}
-                className="group block w-full text-left cursor-pointer"
-              >
-                <div className="relative aspect-[4/5] overflow-hidden bg-[#F4EFE6]">
-                  <ImageWithFallback
-                    src={cat.image}
-                    alt={cat.name}
-                    className="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.05]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/75 via-transparent to-transparent" />
-                  <span className="absolute left-3 top-3 text-[9px] tabular-nums tracking-[0.3em] text-[#FAF7F2]/70">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <div className="absolute inset-x-0 bottom-0 p-3 md:p-4">
-                    <h3 className="font-serif text-base leading-tight text-[#FAF7F2] md:text-xl">{cat.name}</h3>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[8px] uppercase tracking-[0.24em] text-[#C5A059] opacity-0 transition-opacity duration-500 group-hover:opacity-100 md:text-[9px]">
-                      Explore <ArrowUpRight className="h-2.5 w-2.5" />
+        <div className="mt-8 grid gap-5 md:grid-cols-2 md:gap-7">
+          {COLLECTIONS.map((collection) => {
+            const category = currentCategories.find((entry) => entry.slug === collection.slug);
+            const collectionProducts = currentProducts.filter(
+              (product) => product.categoryId === (category?.id || collection.id)
+            );
+            const image = collectionProducts[0]
+              ? getProductImage(collectionProducts[0])
+              : collection.fallbackImage;
+            const isDiy = collection.slug === 'diy-colouring-kits';
+
+            return (
+              <Reveal key={collection.slug}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/shop?category=${collection.slug}`)}
+                  className="group flex h-full w-full flex-col overflow-hidden border border-[#2C1E16]/10 bg-white text-left transition-colors hover:border-[#B89352]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
+                >
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#F4EFE6]">
+                    <ImageWithFallback
+                      src={image}
+                      alt={collectionProducts[0]?.imageAlt || collection.imageAlt}
+                      className={`h-full w-full transition-transform duration-700 ease-out group-hover:scale-[1.03] ${
+                        collection.imageFit === 'contain' ? 'object-contain p-8 sm:p-12' : 'object-cover'
+                      }`}
+                    />
+                    <span className={`absolute left-4 top-4 border border-white/60 bg-white/95 px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] ${collection.accent}`}>
+                      {loadingCatalog
+                        ? 'Collection'
+                        : collectionProducts.length
+                          ? `${collectionProducts.length} designs`
+                          : 'Availability by enquiry'}
                     </span>
                   </div>
-                </div>
-                <p className="mt-2.5 line-clamp-2 text-[11px] leading-relaxed text-[#6B584C]">{cat.description}</p>
-              </button>
-            </Reveal>
-          ))}
+                  <div className="flex flex-1 flex-col justify-between p-5 sm:p-7">
+                    <div>
+                      <p className={`luxe-eyebrow ${collection.accent}`}>{isDiy ? 'For little makers' : 'For slower moments'}</p>
+                      <h3 className="mt-2 font-serif text-2xl text-[#2C1E16] sm:text-3xl">{collection.title}</h3>
+                      <p className="mt-2 font-serif text-lg text-[#6B584C]">{collection.heading}</p>
+                      <p className="mt-3 max-w-lg text-sm leading-6 text-[#6B584C]">{collection.description}</p>
+                    </div>
+                    <span className="mt-6 inline-flex min-h-11 items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#2C1E16]">
+                      {collectionProducts.length ? 'Browse this collection' : 'Ask about availability'}
+                      <ArrowRight aria-hidden="true" className="h-4 w-4 text-[#A77D3F] transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                </button>
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
-      <section className="border-t border-[#2C1E16]/10">
+      <section className="border-y border-[#2C1E16]/10 bg-[#F4EFE6]/55">
         <div className="mx-auto max-w-7xl px-5 py-14 md:px-10 md:py-20">
-          <Reveal className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <Reveal className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="luxe-eyebrow text-[#B89352]">The Signature Edit</p>
-              <h2 className="mt-3 font-serif text-3xl leading-tight md:text-4xl">Creations in focus.</h2>
+              <p className="luxe-eyebrow text-[#A65F43]">Kids’ DIY Colouring Kits</p>
+              <h2 className="mt-3 font-serif text-3xl leading-tight text-[#2C1E16] md:text-4xl">
+                Make it yours, one colour at a time.
+              </h2>
             </div>
-
-            <div
-              role="group"
-              aria-label="Filter signature collection"
-              className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0"
+            <button
+              type="button"
+              onClick={() => navigate('/shop?category=diy-colouring-kits')}
+              className="inline-flex min-h-11 items-center gap-2 self-start text-[10px] font-medium uppercase tracking-[0.18em] text-[#2C1E16] hover:text-[#8F5038] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] sm:self-auto cursor-pointer"
             >
-              {TABS.map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={activeTab === key}
-                  onClick={() => setActiveTab(key)}
-                  className={`min-h-11 whitespace-nowrap border px-3.5 py-2 text-[9px] uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer ${
-                    activeTab === key
-                      ? 'border-[#2C1E16] bg-[#2C1E16] text-[#FAF7F2]'
-                      : 'border-[#2C1E16]/12 text-[#6B584C] hover:border-[#2C1E16]/40 hover:text-[#2C1E16]'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+              See all {currentProducts.filter((product) => product.categoryId === 'cat-diy-colouring-kits').length} kits
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </button>
           </Reveal>
 
           {loadingCatalog ? (
-            <div className="mt-9 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-8">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <div key={n} className="space-y-3">
-                  <div className="aspect-[4/5] animate-pulse bg-[#F4EFE6]" />
-                  <div className="h-3 w-2/3 animate-pulse bg-[#F4EFE6]" />
-                </div>
+            <div role="status" aria-label="Loading DIY colouring kits" className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={item} className="aspect-[4/5] animate-pulse bg-[#E9DFC9]" />
               ))}
+            </div>
+          ) : currentProducts.filter((product) => product.categoryId === 'cat-diy-colouring-kits').length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+              {currentProducts
+                .filter((product) => product.categoryId === 'cat-diy-colouring-kits')
+                .slice(0, 4)
+                .map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
             </div>
           ) : (
-            <div className="mt-9 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-8">
-              {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <p className="border border-dashed border-[#2C1E16]/15 bg-white/60 p-8 text-center text-sm text-[#6B584C]">
+              Our kids’ colouring kits are being refreshed. Contact the concierge for updates.
+            </p>
           )}
+        </div>
+      </section>
 
-          <div className="mt-12 text-center">
-            <button
-              type="button"
-              onClick={() => navigate('/shop')}
-              className="group inline-flex items-center gap-3 border border-[#2C1E16]/25 px-8 py-3.5 text-[10px] uppercase tracking-[0.26em] text-[#2C1E16] transition-colors duration-500 hover:border-[#2C1E16] hover:bg-[#2C1E16] hover:text-[#FAF7F2] cursor-pointer"
-            >
-              View every creation
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </button>
+      <section className="mx-auto max-w-7xl px-5 py-14 md:px-10 md:py-16">
+        <div className="flex flex-col gap-4 border-l-2 border-[#B89352] pl-5 sm:flex-row sm:items-center sm:justify-between sm:pl-7">
+          <div>
+            <p className="luxe-eyebrow text-[#765A2E]">A little help, whenever you need it</p>
+            <h2 className="mt-2 font-serif text-2xl text-[#2C1E16]">Ask us what’s available.</h2>
+            <p className="mt-1 text-sm leading-relaxed text-[#6B584C]">
+              Our WhatsApp Concierge can confirm current products and answer your questions.
+            </p>
           </div>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 self-start border border-[#2C1E16]/20 px-5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#2C1E16] transition-colors hover:border-[#A77D3F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] sm:self-auto"
+          >
+            WhatsApp Concierge
+            <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[#A77D3F]" />
+          </a>
         </div>
       </section>
     </div>

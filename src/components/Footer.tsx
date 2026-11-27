@@ -7,9 +7,10 @@ import { WhatsAppIcon } from './WhatsAppIcon';
 import { YbgpFooterAttribution } from './YbgpBrandingCta';
 
 const exploreLinks = [
-  { label: 'Shop all', href: '/shop' },
+  { label: 'Shop all creations', href: '/shop' },
+  { label: 'Scented Candles', href: '/shop?category=scented-candles' },
+  { label: 'Kids’ DIY Colouring Kits', href: '/shop?category=diy-colouring-kits' },
   { label: 'Collections', href: '/collections' },
-  { label: 'Gifting', href: '/gifting' },
   { label: 'Our story', href: '/about' },
 ];
 
@@ -36,7 +37,7 @@ export const Footer: React.FC = () => {
   const phoneUrl = `tel:${settings.supportPhone.replace(/[^\d+]/g, '')}`;
   const whatsappUrl = buildGeneralWhatsAppUrl(
     settings.whatsappNumber,
-    `Hello ${settings.brandName}, I would like fragrance recommendations or ordering assistance.`
+    `Hello ${settings.brandName}, I would like recommendations or availability information for scented candles and kids' DIY colouring kits.`
   );
 
   if (isAdminRoute) return null;
@@ -69,7 +70,7 @@ export const Footer: React.FC = () => {
           <div className="col-span-2 space-y-3 rounded-2xl border border-[#FAF7F2]/10 bg-[#FAF7F2]/[0.035] p-4 md:col-span-1 md:p-5">
             <BrandLogo variant="stacked" light className="items-start" />
             <p className="max-w-xs text-[12px] leading-relaxed text-[#FAF7F2]/60">
-              Curated fragrances, candles and gifting for memorable moments.
+              Scented candles and creative colouring kits for little makers.
             </p>
             <div className="flex items-center gap-2 pt-1">
               <a
@@ -119,7 +120,7 @@ export const Footer: React.FC = () => {
                 Contact
               </h2>
               <p className="mt-1.5 text-[11px] leading-relaxed text-[#FAF7F2]/45">
-                Fragrance guidance and order support
+                Candle and kit enquiries
               </p>
             </div>
 
@@ -157,7 +158,7 @@ export const Footer: React.FC = () => {
         <div className="flex flex-col gap-3 pt-4 xl:flex-row xl:items-stretch">
           <div className="flex min-h-[68px] flex-1 flex-col justify-center rounded-2xl border border-[#FAF7F2]/10 bg-[#FAF7F2]/[0.035] px-4 py-3 text-[9px] uppercase tracking-[0.16em] text-[#FAF7F2]/55 md:px-5">
             <p>© {new Date().getFullYear()} ERAMORA · All rights reserved</p>
-            <p className="mt-1">Fragrance, candle and gifting concepts</p>
+            <p className="mt-1">Scented candles · kids’ DIY colouring kits</p>
           </div>
           <div className="w-full max-w-[26rem] xl:shrink-0">
             <YbgpFooterAttribution />

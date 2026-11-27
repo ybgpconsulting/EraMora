@@ -58,7 +58,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             src={getProductImage(product)}
             alt={product.isShowcaseDemo ? `${product.name} sample concept image` : product.imageAlt || product.name}
             fallbackTitle={product.name}
-            className="h-full w-full object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.05]"
+            className={`h-full w-full transition-transform duration-[1100ms] ease-out group-hover:scale-[1.03] ${
+              product.categoryId === 'cat-diy-colouring-kits' ? 'object-contain p-3 sm:p-5' : 'object-cover'
+            }`}
           />
         </a>
 
@@ -78,7 +80,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           }}
           aria-label={isSaved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
           aria-pressed={isSaved}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#2C1E16]/10 bg-[#FAF7F2]/90 text-[#2C1E16] backdrop-blur-md transition-all duration-300 hover:text-[#B89352] hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] cursor-pointer"
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#2C1E16]/10 bg-[#FAF7F2]/90 text-[#2C1E16] backdrop-blur-md transition-all duration-300 hover:text-[#765A2E] hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#765A2E] cursor-pointer"
         >
           <Heart className={`h-4 w-4 transition-transform duration-300 ${isSaved ? 'fill-[#B89352] text-[#B89352] scale-110' : ''}`} strokeWidth={1.6} />
         </button>
@@ -125,10 +127,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       <div className="flex flex-1 flex-col pt-3.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[9px] uppercase tracking-[0.24em] text-[#B89352]">{product.categoryName}</p>
+          <p className="text-[9px] uppercase tracking-[0.24em] text-[#765A2E]">{product.categoryName}</p>
           {product.ratingAverage > 0 && (
             <div className="flex items-center gap-1 text-[10px] text-[#6B584C]">
-              <Star className="h-3 w-3 fill-[#C5A059] text-[#C5A059]" strokeWidth={1.5} />
+              <Star className="h-3 w-3 fill-[#765A2E] text-[#765A2E]" strokeWidth={1.5} />
               <span className="font-medium text-[#2C1E16]">{product.ratingAverage.toFixed(1)}</span>
               {product.reviewCount > 0 && <span className="text-[9px] text-[#6B584C]">({product.reviewCount})</span>}
             </div>
@@ -142,7 +144,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               e.preventDefault();
               navigate(`/product/${product.slug}`);
             }}
-            className="transition-colors hover:text-[#B89352]"
+            className="transition-colors hover:text-[#765A2E]"
           >
             {product.name}
           </a>

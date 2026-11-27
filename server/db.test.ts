@@ -11,6 +11,11 @@ test('versioned startup migration preserves catalogue edits and administrator da
       name: 'Edited category',
       description: 'Owner-authored category description.',
       image: '/src/assets/images/hero_eramora_atelier_1794827348612.jpg',
+    }, {
+      id: 'cat-candles',
+      name: 'Scented Candles',
+      description: 'Hand-poured soy-beeswax blend vessels designed for slow, luminous evenings.',
+      image: '/brand/eramora/campaigns/fragrance-art.jpg',
     }],
     products: [
       {
@@ -60,6 +65,7 @@ test('versioned startup migration preserves catalogue edits and administrator da
       { id: 'customer-1', role: 'customer', email: 'customer@example.com' },
     ],
     banners: {
+      announcementText: 'Product and gifting enquiries on WhatsApp',
       heroImage: '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg',
       heroHeadline: 'Owner-edited campaign heading.',
       campaignSubtitle:
@@ -105,8 +111,16 @@ test('versioned startup migration preserves catalogue edits and administrator da
   assert.equal(migrated.products[0].images[0], '/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg');
   assert.equal(migrated.categories[0].name, 'Edited category');
   assert.equal(migrated.categories[0].description, 'Owner-authored category description.');
+  assert.equal(
+    migrated.categories.find((category) => category.id === 'cat-candles')?.description,
+    'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.'
+  );
   assert.equal(migrated.categories[0].image, '/brand/eramora/campaigns/brand-introduction.jpg');
   assert.equal(migrated.banners.heroImage, '/brand/eramora/campaigns/brand-introduction.jpg');
+  assert.equal(
+    migrated.banners.announcementText,
+    'Scented candle and kids’ colouring kit enquiries on WhatsApp'
+  );
   assert.equal(migrated.banners.heroHeadline, 'Owner-edited campaign heading.');
   assert.equal(migrated.settings.brandName, 'ERAMORA custom');
   assert.deepEqual(migrated.users.map((user) => user.id), ['admin-1']);
@@ -166,6 +180,49 @@ test('versioned startup migration preserves catalogue edits and administrator da
   assert.equal(storedVersion, 5, 'a completed migration should not write again');
 });
 
+test('version 9 migration normalizes the deployed candle category description from schema version 8', async () => {
+  const legacyDescription = 'Hand-poured soy-beeswax blend vessels designed for slow, luminous evenings.';
+  let storedData = JSON.stringify({
+    schemaVersion: 8,
+    categories: [{
+      id: 'cat-candles',
+      name: 'Scented Candles',
+      description: legacyDescription,
+    }],
+    products: [],
+  });
+  let storedVersion = 1;
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => ({ data: storedData, version: storedVersion }) as T,
+        run: async () => {
+          if (query.startsWith('UPDATE app_state')) {
+            storedData = String(values[0]);
+            storedVersion += 1;
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        },
+      };
+    },
+  };
+
+  await initDb({ DB: fakeDb } as unknown as Env);
+  const migrated = getDb() as { schemaVersion: number; categories: Array<{ id: string; description: string }> };
+  assert.equal(migrated.schemaVersion, DATABASE_SCHEMA_VERSION);
+  assert.equal(
+    migrated.categories.find((category) => category.id === 'cat-candles')?.description,
+    'Explore candle concepts in the ERAMORA sample catalogue. Materials, specifications, price and availability require confirmation.'
+  );
+});
+
 test('version 6 archives only the two confirmed incomplete listings', async () => {
   const records = [
     { id: 'prod-asd', slug: 'asd', name: 'Asd', isArchived: false },
@@ -209,7 +266,7 @@ test('version 6 archives only the two confirmed incomplete listings', async () =
     schemaVersion: number;
     products: Array<{ id: string; slug?: string; name: string; isArchived: boolean }>;
   };
-  assert.equal(migrated.schemaVersion, 7);
+  assert.equal(migrated.schemaVersion, DATABASE_SCHEMA_VERSION);
   assert.equal(migrated.products.length, records.length);
   assert.deepEqual(
     migrated.products.map((product) => [product.id, product.name, product.isArchived]),

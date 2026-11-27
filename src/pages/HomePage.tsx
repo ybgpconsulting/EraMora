@@ -1,381 +1,252 @@
-import React, { useRef } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import React from 'react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { SeoHead } from '../components/SeoHead';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
-import { useScrollProgress, useWindowScroll } from '../hooks/useScrollProgress';
+import { SeoHead } from '../components/SeoHead';
+import { buildGeneralWhatsAppUrl } from '../utils/commerce';
+import { getCurrentStoreCategories, getCurrentStoreProducts, getProductImage } from '../utils/catalogue';
 import { SEO_PAGES } from '../utils/seo';
 
-const IMG = {
-  hero: '/src/assets/images/hero_eramora_atelier_1794827348612.jpg',
-  candle: '/src/assets/images/product_candle_oud_velvet_1794827351032.jpg',
-  perfume: '/src/assets/images/product_perfume_saffron_noir_1794827349377.jpg',
-  diffuser: '/src/assets/images/product_reed_diffuser_neroli_1794827350244.jpg',
-  coffret: '/src/assets/images/product_gift_coffret_luxury_1794827351996.jpg',
-  ritual: '/src/assets/images/editorial_lifestyle_ritual_1794827351121.jpg',
-};
+const CANDLE_IMAGE = '/src/assets/images/product_candle_oud_velvet_1794827351032.jpg';
+const DIY_IMAGE = '/products/diy-colouring-kits/rose-lid-jar-tray.webp';
 
-interface ChapterProps {
-  id?: string;
-  index: string;
-  eyebrow: string;
-  title: string;
-  body: string;
-  cta: string;
-  href: string;
-  image: string;
-}
-
-const Chapter = React.memo(function Chapter({ id, index, eyebrow, title, body, cta, href, image }: ChapterProps) {
-  const { navigate } = useStore();
-  const ref = useRef<HTMLElement>(null);
-  const progress = useScrollProgress(ref);
-  const reveal = Math.min(1, Math.max(0, (progress - 0.04) / 0.3));
-
-  return (
-    <section id={id} ref={ref} className="home-scroll-chapter relative h-[190svh] bg-[#1B120D] md:h-[225svh]">
-      <div className="home-scroll-stage sticky top-[var(--nav-h)] h-[calc(100svh-var(--nav-h))] overflow-hidden">
-        <img
-          src={image}
-          alt={title}
-          loading="lazy"
-          className="home-scroll-image absolute inset-0 h-full w-full object-cover will-change-transform"
-          style={{ transform: `scale(${1.07 + progress * 0.1})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/92 via-[#1B120D]/20 to-[#1B120D]/55" />
-
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-6 text-[#FAF7F2]/45 md:px-10">
-          <span className="luxe-eyebrow">ERAMORA</span>
-          <span className="text-[10px] tabular-nums tracking-[0.34em]">{index}</span>
-        </div>
-
-        <div className="home-scroll-content relative mx-auto flex h-full max-w-7xl flex-col justify-end px-5 pb-24 md:px-10 md:pb-16">
-          <div
-            className="home-scroll-copy max-w-xl text-[#FAF7F2]"
-            style={{ opacity: reveal, transform: `translate3d(0, ${(1 - reveal) * 30}px, 0)` }}
-          >
-            <p className="luxe-eyebrow text-[#C5A059]">{eyebrow}</p>
-            <h2 className="mt-4 text-balance font-serif text-[2.6rem] leading-[1.02] md:text-[3.6rem] lg:text-[4.1rem]">
-              {title}
-            </h2>
-            <p className="mt-5 max-w-md text-[13px] leading-relaxed text-[#FAF7F2]/70 md:text-[15px]">{body}</p>
-            <button
-              type="button"
-              onClick={() => navigate(href)}
-              className="group mt-8 inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] cursor-pointer"
-            >
-              <span className="relative pb-1">
-                {cta}
-                <span className="absolute bottom-0 left-0 h-px w-full bg-[#C5A059]/50 transition-colors duration-500 group-hover:bg-[#C5A059]" />
-              </span>
-              <ArrowUpRight className="h-3.5 w-3.5 text-[#C5A059] transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-});
-
-const destinations = [
+const collectionDetails = [
   {
-    n: '01',
-    title: 'The Collections',
-    copy: 'Candles, fine fragrance, home perfumes and the objects that hold them.',
-    href: '/collections',
-    image: IMG.candle,
+    slug: 'scented-candles',
+    title: 'Scented Candles',
+    eyebrow: 'For slower moments',
+    copy: 'A warm, gentle glow for the corners of home you return to.',
+    accent: 'champagne',
   },
   {
-    n: '02',
-    title: 'Signature Creations',
-    copy: 'Our most-loved compositions, ready to be discovered in full.',
-    href: '/shop',
-    image: IMG.perfume,
+    slug: 'diy-colouring-kits',
+    title: "Kids’ DIY Colouring Kits",
+    eyebrow: 'For little makers',
+    copy: 'White decorative pieces ready for children to make their own with colour.',
+    accent: 'terracotta',
   },
-  {
-    n: '03',
-    title: 'The Gifting Atelier',
-    copy: 'Explore gifting concepts and ask our concierge about available options.',
-    href: '/gifting',
-    image: IMG.coffret,
-  },
-];
-
-const campaignArtwork = [
-  {
-    title: 'The Art of Fragrance',
-    copy: 'Explore curated fragrances and scented candles.',
-    image: '/brand/eramora/campaigns/fragrance-art.jpg',
-    alt: 'ERAMORA fragrance campaign featuring a candle, diffuser and the message The Art of Fragrance',
-    href: '/collections',
-  },
-  {
-    title: 'Thoughtful Gifting',
-    copy: 'Discover gifting composed for every occasion.',
-    image: '/brand/eramora/campaigns/thoughtful-gifting.jpg',
-    alt: 'ERAMORA gifting campaign showing a luxury fragrance and candle gift set',
-    href: '/gifting',
-  },
-  {
-    title: 'Introducing ERAMORA',
-    copy: 'Where fragrance meets emotion.',
-    image: '/brand/eramora/campaigns/brand-introduction.jpg',
-    alt: 'ERAMORA introduction campaign featuring its fragrance, candle and gifting collection',
-    href: '/about',
-  },
-];
+] as const;
 
 export const HomePage: React.FC = () => {
-  const { navigate, banners, settings, products } = useStore();
-  const scrollY = useWindowScroll();
-  const heroImage =
-    banners.heroImage === '/brand/eramora/campaigns/brand-introduction.jpg'
-      ? IMG.hero
-      : banners.heroImage || IMG.hero;
+  const { navigate, categories, products, settings, loadingCatalog } = useStore();
+  const currentCategories = getCurrentStoreCategories(categories);
+  const currentProducts = getCurrentStoreProducts(products, categories);
+  const candleProduct = currentProducts.find((product) => product.categoryId === 'cat-scented-candles');
+  const diyProducts = currentProducts.filter((product) => product.categoryId === 'cat-diy-colouring-kits');
+  const heroCandleImage = candleProduct ? getProductImage(candleProduct) : CANDLE_IMAGE;
+  const heroDiyImage = diyProducts[0] ? getProductImage(diyProducts[0]) : DIY_IMAGE;
+  const whatsappUrl = buildGeneralWhatsAppUrl(
+    settings.whatsappNumber,
+    `Hello ${settings.brandName}, please let me know about current scented candle and kids' DIY colouring kit availability.`
+  );
 
   return (
     <div className="overflow-x-clip bg-[#FAF7F2]">
       <SeoHead {...SEO_PAGES.home} />
 
-      {/* ---------- Cover ---------- */}
-      <section className="relative h-[calc(100svh-var(--nav-h))] min-h-[520px] overflow-hidden bg-[#1B120D]">
-        <img
-          src={heroImage}
-          alt="ERAMORA scented candle and Eau de Parfum flacon on travertine stone"
-          className="home-hero-image absolute inset-0 h-full w-full object-cover"
-          style={{
-            transform: `translate3d(0, ${Math.min(scrollY * 0.16, 120)}px, 0) scale(${
-              1.05 + Math.min(scrollY / 5000, 0.05)
-            })`,
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1B120D]/45 via-[#1B120D]/5 to-[#1B120D]/85" />
-
-        <div className="absolute inset-x-0 top-0 flex justify-center px-6 pt-7">
-          <span className="luxe-eyebrow text-center text-[#FAF7F2]/70">
-            {banners.heroEyebrow || `${settings.brandName} · Atelier Collection`}
-          </span>
-        </div>
-
-        <div className="absolute inset-x-0 top-[13%] flex flex-col items-center gap-5 px-6 text-center md:top-[16%]">
-          <div>
-            <h1 className="mx-auto max-w-3xl text-balance font-serif text-[2.5rem] leading-[1.02] text-[#FAF7F2] drop-shadow-[0_2px_14px_rgba(27,18,13,0.7)] md:text-6xl lg:text-7xl">
-              {banners.heroHeadline}
+      <section className="relative overflow-hidden bg-[#241811] text-[#FAF7F2]">
+        <div className="mx-auto grid min-h-[720px] max-w-[1440px] grid-cols-1 lg:min-h-[680px] lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="relative z-10 flex flex-col justify-center px-5 pb-12 pt-16 sm:px-8 md:px-12 lg:py-20 xl:px-16">
+            <p className="luxe-eyebrow text-[#D4B77D]">Scented candles · kids’ colouring kits</p>
+            <h1 className="mt-5 max-w-3xl text-balance font-serif text-[clamp(2.85rem,7vw,5.5rem)] leading-[0.98]">
+              A softer ritual.
+              <span className="mt-1 block text-[#D4B77D]">A brighter afternoon.</span>
             </h1>
-            <p className="mx-auto mt-4 max-w-md text-[12px] leading-relaxed text-[#FAF7F2] drop-shadow-[0_1px_8px_rgba(27,18,13,0.8)] md:text-sm">
-              {banners.heroSubheadline}
+            <p className="mt-6 max-w-lg text-sm leading-7 text-[#FAF7F2]/75 md:text-base">
+              Discover ERAMORA scented candles and creative colouring kits for little makers. Browse the current edit
+              and ask our concierge to confirm availability before ordering.
+            </p>
+
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:flex">
+              <button
+                type="button"
+                onClick={() => navigate('/shop?category=scented-candles')}
+                className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#FAF7F2] px-3 text-xs font-medium uppercase tracking-[0.12em] text-[#241811] transition-colors hover:bg-[#E9DFC9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B77D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241811] sm:gap-3 sm:px-5 sm:tracking-[0.16em] cursor-pointer"
+              >
+                <span className="sm:hidden">Candles</span>
+                <span className="hidden sm:inline">Explore scented candles</span>
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/shop?category=diy-colouring-kits')}
+                className="inline-flex min-h-12 items-center justify-center gap-2 border border-[#FAF7F2]/40 px-3 text-xs font-medium uppercase tracking-[0.12em] text-[#FAF7F2] transition-colors hover:border-[#D4B77D] hover:text-[#E2C792] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B77D] sm:gap-3 sm:px-5 sm:tracking-[0.16em] cursor-pointer"
+              >
+                <span className="sm:hidden">Kids’ kits</span>
+                <span className="hidden sm:inline">Shop kids’ kits</span>
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="mt-6 text-[11px] leading-relaxed text-[#FAF7F2]/55">
+              Product details and availability are confirmed by the ERAMORA WhatsApp Concierge.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/shop')}
-            className="group inline-flex min-h-11 items-center gap-2 bg-[#2C1E16] px-6 text-[10px] font-medium uppercase tracking-[0.2em] text-[#FAF7F2] transition-colors hover:bg-[#3F2C21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FAF7F2] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241811] cursor-pointer"
-          >
-            {banners.heroCtaLabel || 'Explore the Collection'}
-            <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 flex justify-center pb-28 md:pb-10">
-          <button
-            type="button"
-            onClick={() => {
-              const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-              document.getElementById('home-philosophy')?.scrollIntoView({
-                behavior: reducedMotion ? 'auto' : 'smooth',
-              });
-            }}
-            aria-label="Scroll to explore the atelier"
-            className="group flex flex-col items-center gap-3 cursor-pointer"
-          >
-            <span className="text-[9px] uppercase tracking-[0.42em] text-[#FAF7F2]/60 transition-colors group-hover:text-[#FAF7F2]">
-              Scroll
-            </span>
-            <span className="relative block h-12 w-px overflow-hidden bg-[#FAF7F2]/20">
-              <span className="scroll-cue absolute inset-0 bg-[#C5A059]" />
-            </span>
-          </button>
+          <div className="relative min-h-[390px] overflow-hidden bg-[#3A291F] sm:min-h-[480px] lg:min-h-0">
+            <ImageWithFallback
+              src={heroCandleImage}
+              alt={candleProduct?.imageAlt || 'ERAMORA scented candle in warm, natural light'}
+              loading="eager"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1B120D]/70 via-[#1B120D]/5 to-[#1B120D]/10" />
+            <div className="absolute bottom-5 left-5 text-[#FAF7F2] sm:bottom-8 sm:left-8">
+              <p className="luxe-eyebrow text-[#E1C58B]">The ERAMORA edit</p>
+              <p className="mt-2 font-serif text-2xl">Made for moments at home.</p>
+            </div>
+            <div className="absolute right-4 top-4 flex w-[min(45%,220px)] items-center gap-3 border border-white/30 bg-[#FAF7F2]/95 p-2.5 text-[#2C1E16] shadow-lg backdrop-blur-md sm:right-7 sm:top-7 sm:w-[230px] sm:p-3">
+              <ImageWithFallback
+                src={heroDiyImage}
+                alt={diyProducts[0]?.imageAlt || 'Unpainted white DIY colouring kit design'}
+                className="h-16 w-16 shrink-0 bg-[#F4EFE6] object-contain sm:h-[76px] sm:w-[76px]"
+              />
+              <div className="min-w-0">
+                <p className="text-[9px] uppercase tracking-[0.15em] text-[#A65F43]">For little makers</p>
+                <p className="mt-1 line-clamp-2 font-serif text-sm leading-tight sm:text-base">
+                  Kids’ DIY Colouring Kits
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ---------- Scroll chapters ---------- */}
-      <Chapter
-        id="home-philosophy"
-        index="I"
-        eyebrow="The Philosophy"
-        title="Where Fragrance Meets Emotion."
-        body="Explore fragrance, candle and gifting concepts created to evoke a feeling."
-        cta="Read our story"
-        href="/about"
-        image={IMG.ritual}
-      />
-      <Chapter
-        index="II"
-        eyebrow="The Gifting Atelier"
-        title={banners.campaignTitle}
-        body={banners.campaignSubtitle}
-        cta="Enter the atelier"
-        href="/gifting"
-        image={IMG.coffret}
-      />
-      <Chapter
-        index="III"
-        eyebrow="Objects for the Home"
-        title="A Scent for Every Room."
-        body="Explore concepts for fragrance and objects for the home. Product materials and specifications require confirmation."
-        cta="View the collections"
-        href="/collections"
-        image={IMG.candle}
-      />
-
-      {/* ---------- Atelier index ---------- */}
       <section className="mx-auto max-w-7xl px-5 py-16 md:px-10 md:py-24">
-        <Reveal className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <Reveal className="flex flex-col gap-4 border-b border-[#2C1E16]/10 pb-7 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="luxe-eyebrow text-[#B89352]">The Atelier Index</p>
-            <h2 className="mt-3 max-w-lg text-balance font-serif text-3xl leading-[1.08] md:text-5xl">
-              Four ways to enter the house.
+            <p className="luxe-eyebrow text-[#765A2E]">Two collections to explore</p>
+            <h2 className="mt-3 max-w-2xl text-balance font-serif text-3xl leading-tight text-[#2C1E16] md:text-5xl">
+              Choose a moment to make your own.
             </h2>
           </div>
-          <p className="max-w-sm text-[13px] leading-relaxed text-[#6B584C] md:text-right">
-            Each room of ERAMORA lives on its own page — so the story stays unhurried.
+          <p className="max-w-sm text-sm leading-relaxed text-[#6B584C] md:text-right">
+            A considered candle for home, or a creative kit for a colourful afternoon together.
           </p>
         </Reveal>
 
-        <div className="mt-10 grid grid-cols-1 gap-px border border-[#2C1E16]/10 bg-[#2C1E16]/10 sm:grid-cols-2 lg:grid-cols-3">
-          {destinations.map((item, i) => (
-            <Reveal key={item.href} delay={i * 60} className="h-full">
-              <button
-                type="button"
-                onClick={() => navigate(item.href)}
-                className="group flex h-full w-full items-stretch gap-4 bg-[#FAF7F2] p-4 text-left transition-colors duration-500 hover:bg-[#F4EFE6]/70 md:p-5 cursor-pointer"
-              >
-                <div className="h-[92px] w-16 shrink-0 overflow-hidden bg-[#F4EFE6] md:h-24 md:w-20">
-                  <ImageWithFallback
-                    src={item.image}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-[1100ms] group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex flex-1 flex-col justify-between py-0.5">
-                  <div>
-                    <span className="text-[9px] tabular-nums tracking-[0.34em] text-[#B89352]">{item.n}</span>
-                    <h3 className="mt-1 font-serif text-xl leading-tight text-[#2C1E16] md:text-2xl">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-[#6B584C] md:text-xs">{item.copy}</p>
+        <div className="mt-8 grid gap-5 md:grid-cols-2 md:gap-7">
+          {collectionDetails.map((collection, index) => {
+            const category = currentCategories.find((entry) => entry.slug === collection.slug);
+            const product = currentProducts.find((entry) => entry.categoryId === category?.id);
+            const image =
+              collection.slug === 'scented-candles'
+                ? product ? getProductImage(product) : CANDLE_IMAGE
+                : product ? getProductImage(product) : DIY_IMAGE;
+            const categoryHasProducts = currentProducts.some((entry) => entry.categoryId === category?.id);
+            const isDiy = collection.slug === 'diy-colouring-kits';
+
+            return (
+              <Reveal key={collection.slug} delay={index * 70}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/shop?category=${collection.slug}`)}
+                  className="group grid w-full overflow-hidden border border-[#2C1E16]/10 bg-white text-left transition-colors duration-300 hover:border-[#B89352]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] md:grid-cols-[1.05fr_0.95fr] cursor-pointer"
+                >
+                  <div className="relative aspect-[5/4] overflow-hidden bg-[#F4EFE6] md:aspect-auto md:min-h-[320px]">
+                    <ImageWithFallback
+                      src={image}
+                      alt={product?.imageAlt || (collection.slug === 'scented-candles' ? 'Scented candle collection' : 'Unpainted white DIY colouring kit')}
+                      className={`h-full w-full transition-transform duration-700 ease-out group-hover:scale-[1.03] ${
+                        isDiy ? 'object-contain p-8 sm:p-12' : 'object-cover'
+                      }`}
+                    />
+                    <span
+                      className={`absolute left-4 top-4 border bg-[#FAF7F2]/95 px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] ${
+                        collection.accent === 'terracotta'
+                          ? 'border-[#A65F43]/30 text-[#8F5038]'
+                          : 'border-[#B89352]/30 text-[#765A2E]'
+                      }`}
+                    >
+                      {loadingCatalog
+                        ? 'Collection'
+                        : categoryHasProducts
+                          ? `${currentProducts.filter((entry) => entry.categoryId === category?.id).length} designs`
+                          : 'Ask about availability'}
+                    </span>
                   </div>
-                  <span className="mt-3 inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.28em] text-[#2C1E16]/60 transition-colors group-hover:text-[#B89352]">
-                    Enter
-                    <ArrowUpRight className="h-3 w-3" />
-                  </span>
-                </div>
-              </button>
-            </Reveal>
-          ))}
+                  <div className="flex flex-col justify-between p-5 sm:p-7 md:p-6 lg:p-8">
+                    <div>
+                      <p className={`luxe-eyebrow ${collection.accent === 'terracotta' ? 'text-[#8F5038]' : 'text-[#765A2E]'}`}>
+                        {collection.eyebrow}
+                      </p>
+                      <h3 className="mt-3 font-serif text-2xl leading-tight text-[#2C1E16] sm:text-3xl">
+                        {collection.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-[#6B584C]">{collection.copy}</p>
+                    </div>
+                    <span className="mt-8 inline-flex min-h-11 items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-[#2C1E16]">
+                      {collection.slug === 'scented-candles' && !categoryHasProducts
+                        ? 'Ask our concierge'
+                        : 'Explore collection'}
+                      <ArrowRight aria-hidden="true" className="h-4 w-4 text-[#A77D3F] transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                </button>
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
-      {/* ---------- Curated Atelier Creations ---------- */}
-      {products.length > 0 && (
-        <section className="bg-[#F4EFE6]/50 border-t border-b border-[#2C1E16]/10 py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-5 md:px-10">
-            <Reveal className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-10">
+      {currentProducts.length > 0 && (
+        <section className="border-y border-[#2C1E16]/10 bg-[#F4EFE6]/60">
+          <div className="mx-auto max-w-7xl px-5 py-16 md:px-10 md:py-20">
+            <Reveal className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="luxe-eyebrow text-[#B89352]">Curated Creations</p>
-                <h2 className="mt-2 font-serif text-3xl md:text-5xl text-[#2C1E16]">
-                  Objects of scent and ceremony.
+                <p className="luxe-eyebrow text-[#765A2E]">The current edit</p>
+                <h2 className="mt-3 font-serif text-3xl leading-tight text-[#2C1E16] md:text-4xl">
+                  Explore what’s listed now.
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => navigate('/shop')}
-                className="group inline-flex items-center gap-2 self-start text-[10px] uppercase tracking-[0.24em] text-[#2C1E16] md:self-auto cursor-pointer"
+                className="inline-flex min-h-11 items-center gap-2 self-start text-[10px] font-medium uppercase tracking-[0.18em] text-[#2C1E16] hover:text-[#8F5038] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] md:self-auto cursor-pointer"
               >
-                Explore all creations
-                <ArrowUpRight className="h-3.5 w-3.5 text-[#B89352] transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                View all {currentProducts.length} creations
+                <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
               </button>
             </Reveal>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {products.slice(0, 4).map((p) => (
-                <ProductCard key={p.id} product={p} />
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+              {currentProducts.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* ---------- Atelier campaign artwork ---------- */}
-      <section className="mx-auto max-w-7xl px-5 py-16 md:px-10 md:py-24">
-        <Reveal className="text-center">
-          <p className="luxe-eyebrow text-[#B89352]">From the ERAMORA Atelier</p>
-          <h2 className="mt-3 font-serif text-3xl leading-tight md:text-5xl">
-            Make every moment memorable.
-          </h2>
-        </Reveal>
-
-        <div className="mt-9 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {campaignArtwork.map((campaign, i) => (
-            <Reveal key={campaign.title} delay={i * 60}>
-              <button
-                type="button"
-                onClick={() => navigate(campaign.href)}
-                className="group block w-full text-left cursor-pointer"
-              >
-                <div className="aspect-[4/5] overflow-hidden bg-[#F4EFE6]">
-                  <img
-                    src={campaign.image}
-                    alt={campaign.alt}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-contain transition-transform duration-[900ms] group-hover:scale-[1.02]"
-                  />
-                </div>
-                <h3 className="mt-4 font-serif text-xl text-[#2C1E16] md:text-2xl">{campaign.title}</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-[#6B584C]">{campaign.copy}</p>
-                <span className="mt-3 inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.26em] text-[#2C1E16]/70 transition-colors group-hover:text-[#B89352]">
-                  Discover
-                  <ArrowUpRight className="h-3 w-3" />
-                </span>
-              </button>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------- Closing invitation ---------- */}
-      <section className="relative h-[72svh] min-h-[440px] overflow-hidden">
-        <img
-          src={IMG.perfume}
-          alt="ERAMORA Saffron Noir Eau de Parfum flacon in warm light"
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-[#1B120D]/68" />
-        <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-6 text-center text-[#FAF7F2]">
-          <Reveal>
-            <p className="luxe-eyebrow text-[#C5A059]">Begin the Ritual</p>
-            <h2 className="mt-5 text-balance font-serif text-4xl leading-[1.06] md:text-6xl">
-              Find the scent that stays with you.
+      <section className="mx-auto max-w-7xl px-5 py-16 md:px-10 md:py-20">
+        <div className="flex flex-col gap-6 border border-[#2C1E16]/10 bg-[#2C1E16] p-6 text-[#FAF7F2] sm:flex-row sm:items-center sm:justify-between sm:p-8 md:px-10">
+          <div className="max-w-2xl">
+            <p className="luxe-eyebrow text-[#D4B77D]">A personal note goes a long way</p>
+            <h2 className="mt-3 font-serif text-2xl leading-tight sm:text-3xl">
+              Need help choosing?
             </h2>
-            <p className="mx-auto mt-5 max-w-md text-[12px] leading-relaxed text-[#FAF7F2]/65 md:text-sm">
-              Personal fragrance and gifting concierge on WhatsApp
+            <p className="mt-2 text-sm leading-relaxed text-[#FAF7F2]/70">
+              Ask our WhatsApp Concierge about current designs, product details and availability.
             </p>
-            <button
-              type="button"
-              onClick={() => navigate('/shop')}
-              className="group mt-9 inline-flex items-center gap-3 border border-[#FAF7F2]/30 px-8 py-4 text-[10px] uppercase tracking-[0.3em] transition-colors duration-500 hover:border-[#FAF7F2] hover:bg-[#FAF7F2] hover:text-[#2C1E16] cursor-pointer"
-            >
-              Shop all creations
-              <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </button>
-          </Reveal>
+          </div>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-3 bg-[#FAF7F2] px-5 text-xs font-medium uppercase tracking-[0.16em] text-[#241811] transition-colors hover:bg-[#E9DFC9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B77D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#2C1E16]"
+          >
+            WhatsApp Concierge
+            <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+          </a>
         </div>
       </section>
+
+      {loadingCatalog && (
+        <div className="sr-only" role="status" aria-live="polite">
+          Loading the current ERAMORA collections
+        </div>
+      )}
     </div>
   );
 };
