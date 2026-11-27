@@ -569,6 +569,101 @@ test('new products default to unpublished demo concepts and assigned categories 
   assert.ok(!JSON.parse(storedData).categories.some((category: { id: string }) => category.id === 'cat-empty'));
 });
 
+test('admin can permanently delete products while the default delete remains reversible', async () => {
+  const initialState = {
+    schemaVersion: DATABASE_SCHEMA_VERSION,
+    users: [{ id: 'admin-1', role: 'admin', email: 'admin@example.com' }],
+    categories: [],
+    products: [
+      { id: 'product-delete', name: 'Permanent target', isArchived: false },
+      { id: 'product-archive', name: 'Reversible target', isArchived: false },
+    ],
+    banners: {},
+    settings: {},
+  };
+  let storedData = JSON.stringify(initialState);
+  let storedVersion = 1;
+  const fakeDb = {
+    batch: async () => [],
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        first: async <T,>() => ({ data: storedData, version: storedVersion }) as T,
+        run: async () => {
+          if (query.startsWith('UPDATE app_state')) {
+            if (values[1] !== storedVersion) return { meta: { changes: 0 } };
+            storedData = String(values[0]);
+            storedVersion += 1;
+            return { meta: { changes: 1 } };
+          }
+          return { meta: { changes: 0 } };
+        },
+      };
+    },
+  };
+  const env = {
+    DB: fakeDb,
+    SESSION_SECRET: 'product-delete-test-secret-with-at-least-32-characters',
+  } as unknown as Env;
+  const token = await signSessionToken(env, {
+    userId: 'admin-1',
+    role: 'admin',
+    email: 'admin@example.com',
+  });
+  const headers = { origin: 'https://store.example', authorization: `Bearer ${token}` };
+
+  const unauthorizedDelete = await handleRequest(
+    new Request('https://store.example/api/admin/products/product-delete?permanent=true', {
+      method: 'DELETE',
+      headers: { origin: 'https://store.example' },
+    }),
+    env
+  );
+  assert.equal(unauthorizedDelete.status, 403);
+  assert.equal(JSON.parse(storedData).products.length, 2);
+
+  const permanentDelete = await handleRequest(
+    new Request('https://store.example/api/admin/products/product-delete?permanent=true', {
+      method: 'DELETE',
+      headers,
+    }),
+    env
+  );
+  assert.equal(permanentDelete.status, 200);
+  assert.deepEqual(
+    JSON.parse(storedData).products.map((product: { id: string }) => product.id),
+    ['product-archive']
+  );
+
+  const reversibleDelete = await handleRequest(
+    new Request('https://store.example/api/admin/products/product-archive', {
+      method: 'DELETE',
+      headers,
+    }),
+    env
+  );
+  assert.equal(reversibleDelete.status, 200);
+  assert.deepEqual(JSON.parse(storedData).products, [
+    { id: 'product-archive', name: 'Reversible target', isArchived: true },
+  ]);
+
+  const missingDelete = await handleRequest(
+    new Request('https://store.example/api/admin/products/missing?permanent=true', {
+      method: 'DELETE',
+      headers,
+    }),
+    env
+  );
+  assert.equal(missingDelete.status, 404);
+  assert.deepEqual(JSON.parse(storedData).products, [
+    { id: 'product-archive', name: 'Reversible target', isArchived: true },
+  ]);
+});
+
 test('scanner probe paths are blocked before redirects and asset routing while .well-known remains available', async () => {
   let assetFetchCount = 0;
   const env = {

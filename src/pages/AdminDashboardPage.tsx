@@ -373,6 +373,26 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleDeleteProduct = async (product: Product) => {
+    const confirmed = window.confirm(
+      `Permanently delete "${product.name}"? This cannot be undone. Choose Archive to hide it reversibly.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}?permanent=true`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        notify(data.error || 'Could not permanently delete product.', 'error');
+        return;
+      }
+      notify('Product permanently deleted.', 'success');
+      await Promise.all([loadAdminData(), refreshCatalog()]);
+    } catch {
+      notify('Could not delete product. Check your connection and try again.', 'error');
+    }
+  };
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!settingsForm) return;
@@ -1199,6 +1219,15 @@ export const AdminDashboardPage: React.FC = () => {
                         >
                           <Archive className="w-3 h-3" />
                           <span>{p.isArchived ? 'Restore' : 'Archive'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Permanently delete ${p.name}`}
+                          onClick={() => void handleDeleteProduct(p)}
+                          className="inline-flex items-center gap-1 text-[#8C2F27] hover:text-[#6F211B] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B89352] focus-visible:ring-offset-2"
+                        >
+                          <Trash2 aria-hidden="true" className="w-3 h-3" />
+                          <span>Delete</span>
                         </button>
                       </td>
                     </tr>

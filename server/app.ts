@@ -600,14 +600,24 @@ router.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
 router.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const id = req.params.id;
   const permanent = req.query.permanent === 'true';
+  if (!getDb().products.some((product) => product.id === id)) {
+    return res.status(404).json({ error: 'Product not found.' });
+  }
+
+  let productFound = false;
   await saveDb((draft) => {
+    productFound = false;
+    const index = draft.products.findIndex((product) => product.id === id);
+    if (index === -1) return;
+    productFound = true;
+
     if (permanent) {
-      draft.products = draft.products.filter((p) => p.id !== id);
+      draft.products.splice(index, 1);
     } else {
-      const target = draft.products.find((p) => p.id === id);
-      if (target) target.isArchived = true;
+      draft.products[index].isArchived = true;
     }
   });
+  if (!productFound) return res.status(404).json({ error: 'Product not found.' });
   res.json({ ok: true });
 });
 

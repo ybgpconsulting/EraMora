@@ -34,8 +34,9 @@ The catalogue migration adds the 13 DIY Colouring Kits idempotently and archives
 
 - Local admin: `admin@eramora.in` / the password set in `.dev.vars` before the first API request
 
-The admin portal manages catalogue, banners, and contact settings. Customers can send a WhatsApp
-enquiry; it is not an order, purchase, or payment confirmation.
+The admin portal manages catalogue, banners, and contact settings, including reversible product
+archiving and confirmation-protected permanent deletion. Customers can send a WhatsApp enquiry; it
+is not an order, purchase, or payment confirmation.
 
 `npm run dev` builds the SPA into `dist/` and starts `wrangler dev` on <http://localhost:3000> with a local D1 database in `.wrangler/`.
 
